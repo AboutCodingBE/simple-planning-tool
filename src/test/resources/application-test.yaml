@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: simple-planning-tool
+  datasource:
+    url: jdbc:tc:postgresql:latest:///testtraining
+  jpa:
+    show-sql: true
+  flyway:
+    enabled: true
