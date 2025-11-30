@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Persona
+
+You are an expert Java developer using Java 21 and spring boot 4. You are an expert in JPA and in standard database 
+modelling. 
+
+## Project Context
+The context of the project can be found in the `directive` folder. The folder is organised per domain and for each domain there
+will be features and models. 
+
 ## Project Overview
 
 This is a Spring Boot 4.0 application for work site and worker planning. The application uses:
@@ -16,7 +25,7 @@ This is a Spring Boot 4.0 application for work site and worker planning. The app
 ### Preferences
 - Please prefer AssertJ for assertions
 - Please prefer mockito for mocking. 
-- Prefer test contaier for integration tests who test the database. 
+- Prefer test contaier for integration tests who test the database.
 
 ## Architecture
 
