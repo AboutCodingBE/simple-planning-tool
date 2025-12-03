@@ -16,7 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -79,6 +82,72 @@ class WorkerApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldDeleteWorkerWhenValidIdIsProvided() throws Exception {
+        // Given - create a worker in the database
+        Worker worker = new Worker("Jane", "Smith");
+        entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long workerId = worker.getId();
+
+        // When - send DELETE request
+        mockMvc.perform(delete("/workers/" + workerId))
+                .andExpect(status().isOk());
+
+        // Then - verify worker is deleted
+        entityManager.flush();
+        entityManager.clear();
+
+        Long count = entityManager
+                .createQuery("SELECT COUNT(w) FROM Worker w WHERE w.id = :id", Long.class)
+                .setParameter("id", workerId)
+                .getSingleResult();
+
+        assertThat(count).isEqualTo(0L);
+    }
+
+    @Test
+    void shouldReturnOkWhenDeletingNonExistentWorker() throws Exception {
+        // Given - a worker ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        // When / Then - send DELETE request
+        mockMvc.perform(delete("/workers/" + nonExistentId))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldReturnWorkerWhenValidIdIsProvided() throws Exception {
+        // Given - create a worker in the database
+        Worker worker = new Worker("Alice", "Johnson");
+        worker.setDateOfCreation(java.sql.Timestamp.from(java.time.Instant.now()));
+        entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long workerId = worker.getId();
+
+        // When / Then - send GET request
+        mockMvc.perform(get("/workers/" + workerId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(workerId))
+                .andExpect(jsonPath("$.first_name").value("Alice"))
+                .andExpect(jsonPath("$.last_name").value("Johnson"))
+                .andExpect(jsonPath("$.date_of_creation").exists());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenWorkerDoesNotExist() throws Exception {
+        // Given - a worker ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        // When / Then - send GET request
+        mockMvc.perform(get("/workers/" + nonExistentId))
+                .andExpect(status().isNotFound());
     }
 
     private static Stream<String> invalidCreateWorkerRequests() {

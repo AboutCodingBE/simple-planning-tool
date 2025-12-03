@@ -1,6 +1,9 @@
 package be.aboutcoding.simpleplanningtool.worker;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,5 +34,23 @@ public class WorkerApi {
         Worker savedWorker = workerRepository.save(worker);
 
         return ResponseEntity.ok(savedWorker.getId());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<WorkerResponse> getWorker(@PathVariable Long id) {
+        return workerRepository.findById(id)
+                .map(worker -> ResponseEntity.ok(new WorkerResponse(
+                        worker.getId(),
+                        worker.getFirstName(),
+                        worker.getLastName(),
+                        worker.getDateOfCreation()
+                )))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteWorker(@PathVariable Long id) {
+        workerRepository.deleteById(id);
+        return ResponseEntity.ok().build();
     }
 }
