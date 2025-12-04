@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,6 +46,21 @@ public class WorkerApi {
                         worker.getLastName(),
                         worker.getDateOfCreation()
                 )))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Long> updateWorker(@PathVariable Long id, @RequestBody UpdateWorkerRequest request) {
+        if (request.firstName() == null || request.lastName() == null) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        return workerRepository.findById(id)
+                .map(worker -> {
+                    worker.setFirstName(request.firstName());
+                    worker.setLastName(request.lastName());
+                    return ResponseEntity.ok(worker.getId());
+                })
                 .orElse(ResponseEntity.notFound().build());
     }
 

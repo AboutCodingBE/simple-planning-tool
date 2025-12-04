@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -76,7 +77,7 @@ class WorkerApiIntegrationTest {
     }
 
     @ParameterizedTest
-    @MethodSource("invalidCreateWorkerRequests")
+    @MethodSource("invalidWorkerRequests")
     void shouldReturnBadRequestWhenFirstNameOrLastNameIsMissing(String requestBody) throws Exception {
         mockMvc.perform(post("/workers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -150,7 +151,90 @@ class WorkerApiIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
-    private static Stream<String> invalidCreateWorkerRequests() {
+    @Test
+    void shouldUpdateWorkerWhenValidRequestIsMade() throws Exception {
+        // Given - create a worker in the database
+        Worker worker = new Worker("Bob", "Brown");
+        worker.setDateOfCreation(java.sql.Timestamp.from(java.time.Instant.now()));
+        entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long workerId = worker.getId();
+
+        String updateRequestBody = """
+                {
+                  "first_name": "Robert",
+                  "last_name": "Browning"
+                }
+                """;
+
+        // When
+        String responseBody = mockMvc.perform(put("/workers/" + workerId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestBody))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        Long returnedId = Long.parseLong(responseBody);
+
+        // Then
+        entityManager.flush();
+        entityManager.clear();
+
+        Worker updatedWorker = entityManager
+                .createQuery("SELECT w FROM Worker w WHERE w.id = :id", Worker.class)
+                .setParameter("id", workerId)
+                .getSingleResult();
+
+        assertThat(returnedId).isEqualTo(workerId);
+        assertThat(updatedWorker.getId()).isEqualTo(workerId);
+        assertThat(updatedWorker.getFirstName()).isEqualTo("Robert");
+        assertThat(updatedWorker.getLastName()).isEqualTo("Browning");
+        assertThat(updatedWorker.getDateOfCreation()).isNotNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidWorkerRequests")
+    void shouldReturnBadRequestWhenUpdateRequestHasMissingFields(String requestBody) throws Exception {
+        // Given - create a worker in the database
+        Worker worker = new Worker("Charlie", "Davis");
+        worker.setDateOfCreation(java.sql.Timestamp.from(java.time.Instant.now()));
+        entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long workerId = worker.getId();
+
+        // When / Then
+        mockMvc.perform(put("/workers/" + workerId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingNonExistentWorker() throws Exception {
+        // Given - a worker ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        String updateRequestBody = """
+                {
+                  "first_name": "Updated",
+                  "last_name": "Name"
+                }
+                """;
+
+        // When / Then
+        mockMvc.perform(put("/workers/" + nonExistentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestBody))
+                .andExpect(status().isNotFound());
+    }
+
+    private static Stream<String> invalidWorkerRequests() {
         return Stream.of(
                 // Missing first_name
                 """
@@ -167,6 +251,11 @@ class WorkerApiIntegrationTest {
                 // Missing both
                 """
                 {
+                }
+                """,
+                """
+                {
+                  "first_name": ""
                 }
                 """
         );
