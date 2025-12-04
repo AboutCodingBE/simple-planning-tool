@@ -1,5 +1,8 @@
 package be.aboutcoding.simpleplanningtool.worker;
 
+import be.aboutcoding.simpleplanningtool.worker.dto.CreateWorkerRequest;
+import be.aboutcoding.simpleplanningtool.worker.dto.UpdateWorkerRequest;
+import be.aboutcoding.simpleplanningtool.worker.dto.WorkerResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;

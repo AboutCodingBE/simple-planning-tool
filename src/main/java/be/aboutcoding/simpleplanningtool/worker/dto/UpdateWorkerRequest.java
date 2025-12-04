@@ -1,4 +1,4 @@
-package be.aboutcoding.simpleplanningtool.worker;
+package be.aboutcoding.simpleplanningtool.worker.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
