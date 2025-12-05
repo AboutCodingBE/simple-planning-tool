@@ -3,6 +3,7 @@ package be.aboutcoding.simpleplanningtool.worker;
 import be.aboutcoding.simpleplanningtool.worker.dto.CreateWorkerRequest;
 import be.aboutcoding.simpleplanningtool.worker.dto.UpdateWorkerRequest;
 import be.aboutcoding.simpleplanningtool.worker.dto.WorkerResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,11 +54,7 @@ public class WorkerApi {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Void> updateWorker(@PathVariable Long id, @RequestBody UpdateWorkerRequest request) {
-        if (request.firstName() == null || request.lastName() == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    public ResponseEntity<Void> updateWorker(@PathVariable Long id, @Valid @RequestBody UpdateWorkerRequest request) {
         Worker worker = workerRepository.findById(id)
                 .orElseThrow(() -> new WorkerNotFoundException(id));
 
