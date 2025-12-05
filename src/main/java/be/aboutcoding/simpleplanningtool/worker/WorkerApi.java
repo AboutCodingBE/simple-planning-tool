@@ -28,11 +28,7 @@ public class WorkerApi {
     }
 
     @PostMapping
-    public ResponseEntity<Long> createWorker(@RequestBody CreateWorkerRequest request) {
-        if (request.firstName() == null || request.lastName() == null) {
-            return ResponseEntity.badRequest().build();
-        }
-
+    public ResponseEntity<Long> createWorker(@Valid @RequestBody CreateWorkerRequest request) {
         Worker worker = new Worker(request.firstName(), request.lastName());
         worker.setDateOfCreation(Timestamp.from(Instant.now()));
 
