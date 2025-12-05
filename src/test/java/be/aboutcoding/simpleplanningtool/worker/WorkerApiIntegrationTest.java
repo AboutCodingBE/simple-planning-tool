@@ -170,15 +170,10 @@ class WorkerApiIntegrationTest {
                 """;
 
         // When
-        String responseBody = mockMvc.perform(put("/workers/" + workerId)
+        mockMvc.perform(put("/workers/" + workerId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateRequestBody))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-
-        Long returnedId = Long.parseLong(responseBody);
+                .andExpect(status().isNoContent());
 
         // Then
         entityManager.flush();
@@ -189,7 +184,6 @@ class WorkerApiIntegrationTest {
                 .setParameter("id", workerId)
                 .getSingleResult();
 
-        assertThat(returnedId).isEqualTo(workerId);
         assertThat(updatedWorker.getId()).isEqualTo(workerId);
         assertThat(updatedWorker.getFirstName()).isEqualTo("Robert");
         assertThat(updatedWorker.getLastName()).isEqualTo("Browning");

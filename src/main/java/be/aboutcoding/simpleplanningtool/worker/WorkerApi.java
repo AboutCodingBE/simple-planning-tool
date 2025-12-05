@@ -53,18 +53,19 @@ public class WorkerApi {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Long> updateWorker(@PathVariable Long id, @RequestBody UpdateWorkerRequest request) {
+    public ResponseEntity<Void> updateWorker(@PathVariable Long id, @RequestBody UpdateWorkerRequest request) {
         if (request.firstName() == null || request.lastName() == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        return workerRepository.findById(id)
-                .map(worker -> {
-                    worker.setFirstName(request.firstName());
-                    worker.setLastName(request.lastName());
-                    return ResponseEntity.ok(worker.getId());
-                })
-                .orElse(ResponseEntity.notFound().build());
+        Worker worker = workerRepository.findById(id)
+                .orElseThrow(() -> new WorkerNotFoundException(id));
+
+        worker.setFirstName(request.firstName());
+        worker.setLastName(request.lastName());
+        workerRepository.save(worker);
+
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}")
