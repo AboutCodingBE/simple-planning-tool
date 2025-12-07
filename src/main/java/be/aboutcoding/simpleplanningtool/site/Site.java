@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 
 @Entity
@@ -21,15 +22,15 @@ public class Site {
     @Column(name = "name")
     private String name;
 
-    @ManyToOne
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JoinColumn(name = "customer_id")
     private Customer customer;
 
     @Column(name = "desired_date")
-    private Instant desiredDate;
+    private LocalDate desiredDate;
 
     @Column(name = "execution_date")
-    private Instant executionDate;
+    private LocalDate executionDate;
 
     @Column(name = "duration_in_days")
     private Integer durationInDays;
