@@ -1,5 +1,6 @@
 package be.aboutcoding.simpleplanningtool.site;
 
+import be.aboutcoding.simpleplanningtool.worker.Worker;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,12 +14,17 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -37,6 +43,7 @@ class SiteApiIntegrationTest {
     void cleanupDatabase() {
         entityManager.createQuery("DELETE FROM Site").executeUpdate();
         entityManager.createQuery("DELETE FROM Customer").executeUpdate();
+        entityManager.createQuery("DELETE FROM Worker").executeUpdate();
     }
 
     @Test
@@ -102,6 +109,119 @@ class SiteApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldDeleteSiteWhenValidIdIsProvided() throws Exception {
+        // Given - create a customer and site in the database
+        Customer customer = new Customer();
+        customer.setName("Test Customer");
+        customer.setIsPrivate(false);
+
+        Site site = new Site();
+        site.setName("Test Site");
+        site.setCustomer(customer);
+        site.setCreationDate(java.time.Instant.now());
+
+        entityManager.persist(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+        Long customerId = customer.getId();
+
+        // When - send DELETE request
+        mockMvc.perform(delete("/sites/" + siteId))
+                .andExpect(status().isOk());
+
+        // Then - verify site is deleted
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteCount = entityManager
+                .createQuery("SELECT COUNT(s) FROM Site s WHERE s.id = :id", Long.class)
+                .setParameter("id", siteId)
+                .getSingleResult();
+
+        assertThat(siteCount).isEqualTo(0L);
+
+        // Verify customer is also deleted
+        Long customerCount = entityManager
+                .createQuery("SELECT COUNT(c) FROM Customer c WHERE c.id = :id", Long.class)
+                .setParameter("id", customerId)
+                .getSingleResult();
+
+        assertThat(customerCount).isEqualTo(0L);
+    }
+
+    @Test
+    void shouldReturnOkWhenDeletingNonExistentSite() throws Exception {
+        // Given - a site ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        // When / Then - send DELETE request
+        mockMvc.perform(delete("/sites/" + nonExistentId))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldReturnSiteWithCustomerAndWorkersWhenValidIdIsProvided() throws Exception {
+        // Given - create customer, workers and site in the database
+        Customer customer = new Customer();
+        customer.setName("Acme Corporation");
+        customer.setIsPrivate(false);
+
+        Worker worker1 = new Worker("Jane", "Workhard");
+        Worker worker2 = new Worker("John", "Builder");
+
+        Site site = new Site();
+        site.setName("Construction Site A");
+        site.setCustomer(customer);
+        site.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        site.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 15));
+        site.setCreationDate(Instant.parse("2025-12-01T10:30:00.000Z"));
+        site.setDurationInDays(7);
+        site.setTransport("Truck and Crane");
+        site.setWorkers(List.of(worker1, worker2));
+
+        entityManager.persist(worker1);
+        entityManager.persist(worker2);
+        entityManager.persist(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+
+        // When - send GET request
+        mockMvc.perform(get("/sites/" + siteId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(siteId))
+                .andExpect(jsonPath("$.name").value("Construction Site A"))
+                .andExpect(jsonPath("$.customer.id").value(customer.getId()))
+                .andExpect(jsonPath("$.customer.customer_name").value("Acme Corporation"))
+                .andExpect(jsonPath("$.customer.is_private_customer").value(false))
+                .andExpect(jsonPath("$.desired_date").value("2026-01-10"))
+                .andExpect(jsonPath("$.planned_date").value("2026-01-15"))
+                .andExpect(jsonPath("$.creation_date").value("2025-12-01T10:30:00Z"))
+                .andExpect(jsonPath("$.duration_in_days").value(7))
+                .andExpect(jsonPath("$.workers").isArray())
+                .andExpect(jsonPath("$.workers.length()").value(2))
+                .andExpect(jsonPath("$.workers[0].id").value(worker1.getId()))
+                .andExpect(jsonPath("$.workers[0].first_name").value("Jane"))
+                .andExpect(jsonPath("$.workers[0].last_name").value("Workhard"))
+                .andExpect(jsonPath("$.workers[1].id").value(worker2.getId()))
+                .andExpect(jsonPath("$.workers[1].first_name").value("John"))
+                .andExpect(jsonPath("$.workers[1].last_name").value("Builder"));
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenSiteDoesNotExist() throws Exception {
+        // Given - a site ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        // When / Then - send GET request and expect 404
+        mockMvc.perform(get("/sites/" + nonExistentId))
+                .andExpect(status().isNotFound());
     }
 
     private static Stream<String> invalidSiteRequests() {
