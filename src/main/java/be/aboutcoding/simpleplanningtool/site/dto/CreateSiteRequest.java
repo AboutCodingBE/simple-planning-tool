@@ -1,8 +1,11 @@
 package be.aboutcoding.simpleplanningtool.site.dto;
 
+import be.aboutcoding.simpleplanningtool.site.Customer;
+import be.aboutcoding.simpleplanningtool.site.Site;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 public record CreateSiteRequest(
@@ -26,4 +29,30 @@ public record CreateSiteRequest(
         @JsonProperty("transport")
         String transport
 ) {
+    public Site toSite() {
+        // Create customer
+        Customer customer = new Customer();
+        customer.setName(customerName);
+        customer.setIsPrivate(isPrivateCustomer != null ? isPrivateCustomer : false);
+
+        // Create site
+        Site site = new Site();
+        site.setName(name);
+        site.setCustomer(customer);
+        site.setCreationDate(Instant.now());
+
+        if (desiredDate != null) {
+            site.setDesiredDate(desiredDate);
+        }
+
+        if (durationInDays != null) {
+            site.setDurationInDays(durationInDays);
+        }
+
+        if (transport != null) {
+            site.setTransport(transport);
+        }
+
+        return site;
+    }
 }

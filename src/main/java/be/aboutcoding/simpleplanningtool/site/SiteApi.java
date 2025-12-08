@@ -35,29 +35,7 @@ public class SiteApi {
 
     @PostMapping
     public ResponseEntity<Long> createSite(@Valid @RequestBody CreateSiteRequest request) {
-        // Create and save customer
-        Customer customer = new Customer();
-        customer.setName(request.customerName());
-        customer.setIsPrivate(request.isPrivateCustomer() != null ? request.isPrivateCustomer() : false);
-
-        // Create and save site
-        Site site = new Site();
-        site.setName(request.name());
-        site.setCustomer(customer);
-        site.setCreationDate(Instant.now());
-
-        if (request.desiredDate() != null) {
-            site.setDesiredDate(request.desiredDate());
-        }
-
-        if (request.durationInDays() != null) {
-            site.setDurationInDays(request.durationInDays());
-        }
-
-        if (request.transport() != null) {
-            site.setTransport(request.transport());
-        }
-
+        Site site = request.toSite();
         Site savedSite = siteRepository.save(site);
         return ResponseEntity.ok(savedSite.getId());
     }
