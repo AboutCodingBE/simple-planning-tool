@@ -45,7 +45,6 @@ class PlanningApiIntegrationTest {
         entityManager.createQuery("DELETE FROM Worker").executeUpdate();
     }
 
-
     @Test
     void shouldUpdateExecutionDateWhenValidDateAndSiteIdAreProvided() throws Exception {
         // Given - create a customer and site in the database
