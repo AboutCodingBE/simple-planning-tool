@@ -14,7 +14,7 @@ A 404 - not found is returned when there is no site with the given id
 
 ## Component overview
 
-### SiteApi
+### PlanningApi
 This is the Rest controller which will contain the PATCH endpoint. This endpoint depends on the site domain and the SiteRepository.
 In this feature, if this class didn't exist yet, it will get a new endpoint. This is a PATCH endpoint.
 
