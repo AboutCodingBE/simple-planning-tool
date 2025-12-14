@@ -30,6 +30,7 @@ This is a Spring Boot 4.0 application for work site and worker planning. The app
 
 - Mapping of a request object to a domain modle should be part of that request object
 - Mapping of a domain model to a response object should be part of the reponsne object
+- NEVER run tests yourself. I am always in control of running tests. 
 
 ## Architecture
 
