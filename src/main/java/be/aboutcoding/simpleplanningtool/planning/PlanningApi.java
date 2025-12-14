@@ -17,9 +17,11 @@ import java.time.LocalDate;
 public class PlanningApi {
 
     private final SiteRepository siteRepository;
+    private final LinkWorkerToSite linkWorkerToSite;
 
-    public PlanningApi(SiteRepository siteRepository) {
+    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite) {
         this.siteRepository = siteRepository;
+        this.linkWorkerToSite = linkWorkerToSite;
     }
 
     @PatchMapping("/sites/{siteId}")
@@ -44,6 +46,15 @@ public class PlanningApi {
         site.setExecutionDate(date);
         siteRepository.save(site);
 
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/sites/{siteId}/workers")
+    public ResponseEntity<Void> linkWorkerToSite(
+            @PathVariable Long siteId,
+            @RequestParam Long workerId) {
+
+        linkWorkerToSite.execute(siteId, workerId);
         return ResponseEntity.noContent().build();
     }
 }
