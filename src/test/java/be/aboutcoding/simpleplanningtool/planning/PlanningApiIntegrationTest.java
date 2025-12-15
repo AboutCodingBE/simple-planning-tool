@@ -8,6 +8,7 @@ import net.bytebuddy.asm.Advice;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -279,6 +280,46 @@ class PlanningApiIntegrationTest {
                 // Sunday - Dec 6 - no sites
                 .andExpect(jsonPath("$.weeks[0].sunday.date").value("2026-12-06"))
                 .andExpect(jsonPath("$.weeks[0].sunday.sites").isEmpty());
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenUntilDateIsBeforeFromDate() throws Exception {
+        // Given - until date is before from date
+        LocalDate fromDate = LocalDate.of(2026, 12, 10);
+        LocalDate untilDate = LocalDate.of(2026, 12, 1);
+
+        // When / Then - send GET request and expect bad request
+        mockMvc.perform(get("/planning")
+                        .queryParam("from", fromDate.toString())
+                        .queryParam("until", untilDate.toString()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidPlanningDateParameters")
+    void shouldReturnBadRequestWhenDateParametersAreInvalid(String fromDate, String untilDate) throws Exception {
+        // When / Then - send GET request with invalid date(s) and expect bad request
+        mockMvc.perform(get("/planning")
+                        .queryParam("from", fromDate)
+                        .queryParam("until", untilDate))
+                .andExpect(status().isBadRequest());
+    }
+
+    private static Stream<org.junit.jupiter.params.provider.Arguments> invalidPlanningDateParameters() {
+        return Stream.of(
+                // Invalid from date
+                Arguments.of("not-a-date", "2026-12-10"),
+                Arguments.of("2026-13-01", "2026-12-10"),
+                Arguments.of("2026-02-30", "2026-12-10"),
+                Arguments.of("01-12-2026", "2026-12-10"),
+                // Invalid until date
+                Arguments.of("2026-12-01", "not-a-date"),
+                Arguments.of("2026-12-01", "2026-13-01"),
+                Arguments.of("2026-12-01", "2026-02-30"),
+                Arguments.of("2026-12-01", "01-12-2026"),
+                // Both invalid
+                Arguments.of("invalid", "also-invalid")
+        );
     }
 
     private Site createAndPersistSite(LocalDate executionDate) {
