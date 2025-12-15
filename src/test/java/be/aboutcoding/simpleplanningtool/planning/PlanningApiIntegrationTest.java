@@ -23,7 +23,9 @@ import java.time.LocalDate;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -220,16 +222,73 @@ class PlanningApiIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void shouldReturnPlanningWithWorkdaysWhenValidFromAndUntilDatesAreProvided() throws Exception {
+        // Given - create a site with execution date on Dec 2, 2026
+        Customer customer = new Customer();
+        customer.setName("Test Customer");
+        customer.setIsPrivate(false);
+
+        Site site = new Site("Delhaize Waregem", 5);
+        site.setCustomer(customer);
+        site.setCreationDate(Instant.now());
+        site.setExecutionDate(LocalDate.of(2026, 12, 2));
+
+        entityManager.persist(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+        LocalDate fromDate = LocalDate.of(2026, 12, 1);
+        LocalDate untilDate = LocalDate.of(2026, 12, 4);
+
+        // When - send GET request to get planning
+        mockMvc.perform(get("/planning")
+                        .queryParam("from", fromDate.toString())
+                        .queryParam("until", untilDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.from").value("2026-12-01"))
+                .andExpect(jsonPath("$.until").value("2026-12-04"))
+                .andExpect(jsonPath("$.weeks").isArray())
+                .andExpect(jsonPath("$.weeks.length()").value(1))
+                // Week 49
+                .andExpect(jsonPath("$.weeks[0].week").value(49))
+                // Monday - Nov 30 - no sites
+                .andExpect(jsonPath("$.weeks[0].monday.date").value("2026-11-30"))
+                .andExpect(jsonPath("$.weeks[0].monday.sites").isEmpty())
+                // Tuesday - Dec 1 - no sites
+                .andExpect(jsonPath("$.weeks[0].tuesday.date").value("2026-12-01"))
+                .andExpect(jsonPath("$.weeks[0].tuesday.sites").isEmpty())
+                // Wednesday - Dec 2 - has the site
+                .andExpect(jsonPath("$.weeks[0].wednesday.date").value("2026-12-02"))
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites").isArray())
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites.length()").value(1))
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites[0].id").value(siteId))
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites[0].name").value("Delhaize Waregem"))
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites[0].duration_in_days").value(5))
+                .andExpect(jsonPath("$.weeks[0].wednesday.sites[0].status").exists())
+                // Thursday - Dec 3 - no sites
+                .andExpect(jsonPath("$.weeks[0].thursday.date").value("2026-12-03"))
+                .andExpect(jsonPath("$.weeks[0].thursday.sites").isEmpty())
+                // Friday - Dec 4 - no sites
+                .andExpect(jsonPath("$.weeks[0].friday.date").value("2026-12-04"))
+                .andExpect(jsonPath("$.weeks[0].friday.sites").isEmpty())
+                // Saturday - Dec 5 - no sites
+                .andExpect(jsonPath("$.weeks[0].saturday.date").value("2026-12-05"))
+                .andExpect(jsonPath("$.weeks[0].saturday.sites").isEmpty())
+                // Sunday - Dec 6 - no sites
+                .andExpect(jsonPath("$.weeks[0].sunday.date").value("2026-12-06"))
+                .andExpect(jsonPath("$.weeks[0].sunday.sites").isEmpty());
+    }
+
     private Site createAndPersistSite(LocalDate executionDate) {
         Customer customer = new Customer();
         customer.setName("Test Customer");
         customer.setIsPrivate(false);
 
-        Site site = new Site();
-        site.setName("Test Site");
+        Site site = new Site("Test Site", 5);
         site.setCustomer(customer);
         site.setCreationDate(Instant.now());
-        site.setDurationInDays(5);
 
         if (executionDate != null) {
             site.setExecutionDate(executionDate);

@@ -1,9 +1,12 @@
 package be.aboutcoding.simpleplanningtool.planning;
 
+import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
+import be.aboutcoding.simpleplanningtool.planning.model.Planning;
 import be.aboutcoding.simpleplanningtool.site.Site;
 import be.aboutcoding.simpleplanningtool.site.SiteRepository;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,10 +21,14 @@ public class PlanningApi {
 
     private final SiteRepository siteRepository;
     private final LinkWorkerToSite linkWorkerToSite;
+    private final GetPlanning getPlanning;
+    private final PlanningResponseMapper planningResponseMapper;
 
-    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite) {
+    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
+        this.getPlanning = getPlanning;
+        this.planningResponseMapper = planningResponseMapper;
     }
 
     @PatchMapping("/sites/{siteId}")
@@ -56,5 +63,24 @@ public class PlanningApi {
 
         linkWorkerToSite.execute(siteId, workerId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<PlanningResponse> getPlanning(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate until) {
+
+        // Apply defaults
+        LocalDate fromDate = from != null ? from : LocalDate.now();
+        LocalDate untilDate = until != null ? until : fromDate.plusDays(30);
+
+        // Validate: until cannot be before from
+        if (untilDate.isBefore(fromDate)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Planning planning = getPlanning.execute(fromDate, untilDate);
+        PlanningResponse response = planningResponseMapper.toResponse(planning);
+        return ResponseEntity.ok(response);
     }
 }

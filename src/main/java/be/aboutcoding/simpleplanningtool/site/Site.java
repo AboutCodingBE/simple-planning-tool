@@ -65,5 +65,6 @@ public class Site {
         }
         this.name = name;
         this.durationInDays = durationInDays;
+        this.status = SiteStatus.OPEN;
     }
 }
