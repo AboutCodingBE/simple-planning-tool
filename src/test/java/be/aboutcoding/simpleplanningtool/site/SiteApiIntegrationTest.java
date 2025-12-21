@@ -225,6 +225,80 @@ class SiteApiIntegrationTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void shouldReturnOnlyOpenSitesWhenFetchingAllOpenSites() throws Exception {
+        // Given - create two sites: one with status OPEN and one with status DONE
+        Customer customer1 = new Customer();
+        customer1.setName("Open Site Customer");
+        customer1.setIsPrivate(false);
+
+        Customer customer2 = new Customer();
+        customer2.setName("Done Site Customer");
+        customer2.setIsPrivate(true);
+
+        Site openSite = new Site();
+        openSite.setName("Open Construction Site");
+        openSite.setCustomer(customer1);
+        openSite.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        openSite.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 10));
+        openSite.setCreationDate(Instant.now());
+        openSite.setDurationInDays(4);
+        openSite.setStatus(SiteStatus.OPEN);
+
+        Site doneSite = new Site();
+        doneSite.setName("Completed Construction Site");
+        doneSite.setCustomer(customer2);
+        doneSite.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 15));
+        doneSite.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 16));
+        doneSite.setCreationDate(Instant.now());
+        doneSite.setDurationInDays(13);
+        doneSite.setStatus(SiteStatus.DONE);
+
+        entityManager.persist(openSite);
+        entityManager.persist(doneSite);
+        entityManager.flush();
+        entityManager.clear();
+
+        // When - send GET request to fetch all open sites
+        mockMvc.perform(get("/sites"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(openSite.getId()))
+                .andExpect(jsonPath("$[0].name").value("Open Construction Site"))
+                .andExpect(jsonPath("$[0].customer_name").value("Open Site Customer"))
+                .andExpect(jsonPath("$[0].duration_in_days").value(4))
+                .andExpect(jsonPath("$[0].desired_date").value("2026-01-10"))
+                .andExpect(jsonPath("$[0].planned_date").value("2026-01-10"));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoOpenSitesExist() throws Exception {
+        // Given - create a site with status DONE (no open sites)
+        Customer customer = new Customer();
+        customer.setName("Done Site Customer");
+        customer.setIsPrivate(false);
+
+        Site doneSite = new Site();
+        doneSite.setName("Completed Construction Site");
+        doneSite.setCustomer(customer);
+        doneSite.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 15));
+        doneSite.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 16));
+        doneSite.setCreationDate(Instant.now());
+        doneSite.setDurationInDays(10);
+        doneSite.setStatus(SiteStatus.DONE);
+
+        entityManager.persist(doneSite);
+        entityManager.flush();
+        entityManager.clear();
+
+        // When - send GET request to fetch all open sites
+        mockMvc.perform(get("/sites"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     private static Stream<String> invalidSiteRequests() {
         return Stream.of(
                 // Missing name

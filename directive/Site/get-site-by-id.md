@@ -14,8 +14,8 @@ Expected results:
     "customer_name": "customer name",
     "is_private_customer": false
   },
-  "desired_date": "2026-01-10T07:30:00.000Z",
-  "planned_date": "2026-01-10T07:30:00.000Z",
+  "desired_date": "2026-01-10",
+  "planned_date": "2026-01-10",
   "creation_date": "2026-01-10T07:30:00.000Z",
   "duration_in_days": 7,
   "workers": [
@@ -68,6 +68,7 @@ If no site can be found, return a 404.
 
 ### SiteRepository
 
-This is a repository which will save a newly created site in the database. If this component already exists, it gets
-a new method taking in a site as parameter.
-The expected result of this method is a domain model. 
+This is a repository which will fetch a site by id. If the repository exists already, it will get a new method. 
+Input: an id representing a site
+Output: a site domain model
+dependencies: depends on the `site` domain model. 

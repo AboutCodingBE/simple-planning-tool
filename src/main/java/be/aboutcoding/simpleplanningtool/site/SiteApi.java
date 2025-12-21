@@ -2,6 +2,7 @@ package be.aboutcoding.simpleplanningtool.site;
 
 import be.aboutcoding.simpleplanningtool.site.dto.CreateSiteRequest;
 import be.aboutcoding.simpleplanningtool.site.dto.CustomerResponse;
+import be.aboutcoding.simpleplanningtool.site.dto.OpenSiteResponse;
 import be.aboutcoding.simpleplanningtool.site.dto.SiteResponse;
 import be.aboutcoding.simpleplanningtool.site.dto.WorkerResponse;
 import be.aboutcoding.simpleplanningtool.worker.Worker;
@@ -38,6 +39,15 @@ public class SiteApi {
         Site site = request.toSite();
         Site savedSite = siteRepository.save(site);
         return ResponseEntity.ok(savedSite.getId());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<OpenSiteResponse>> getAllOpenSites() {
+        List<Site> openSites = siteRepository.findByStatus(SiteStatus.OPEN);
+        List<OpenSiteResponse> response = openSites.stream()
+                .map(OpenSiteResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
