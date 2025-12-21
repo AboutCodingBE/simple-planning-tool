@@ -2,6 +2,7 @@ package be.aboutcoding.simpleplanningtool.site.dto;
 
 import be.aboutcoding.simpleplanningtool.site.Customer;
 import be.aboutcoding.simpleplanningtool.site.Site;
+import be.aboutcoding.simpleplanningtool.site.SiteStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 
@@ -52,6 +53,7 @@ public record CreateSiteRequest(
         if (transport != null) {
             site.setTransport(transport);
         }
+        site.setStatus(SiteStatus.OPEN);
 
         return site;
     }

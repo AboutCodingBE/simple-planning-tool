@@ -74,6 +74,7 @@ public class SiteApi {
                 plannedDate,
                 site.getCreationDate(),
                 site.getDurationInDays(),
+                site.getStatus().toString(),
                 workerResponses
         );
     }

@@ -17,6 +17,7 @@ public record SiteResponse(
         @JsonProperty("planned_date") LocalDate plannedDate,
         @JsonProperty("creation_date") Instant creationDate,
         @JsonProperty("duration_in_days") Integer durationInDays,
+        String status,
         List<WorkerResponse> workers
 ) {
     public static SiteResponse from(Site site) {
@@ -31,6 +32,7 @@ public record SiteResponse(
                 site.getExecutionDate(),
                 site.getCreationDate(),
                 site.getDurationInDays(),
+                site.getStatus().toString(),
                 workers
         );
     }

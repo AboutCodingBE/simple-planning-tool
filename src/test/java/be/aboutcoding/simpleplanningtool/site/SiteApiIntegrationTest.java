@@ -85,6 +85,7 @@ class SiteApiIntegrationTest {
         assertThat(persistedSite.getDesiredDate()).isEqualTo(LocalDate.of(2026, Month.JANUARY, 10));
         assertThat(persistedSite.getDurationInDays()).isEqualTo(7);
         assertThat(persistedSite.getTransport()).isEqualTo("Truck and Crane");
+        assertThat(persistedSite.getStatus()).isEqualTo(SiteStatus.OPEN);
         assertThat(persistedSite.getCreationDate()).isNotNull();
 
         // Verify customer is also persisted
