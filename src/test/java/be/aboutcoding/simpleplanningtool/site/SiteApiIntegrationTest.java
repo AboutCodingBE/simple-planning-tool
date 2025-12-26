@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -299,6 +300,118 @@ class SiteApiIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @Test
+    void shouldUpdateSiteWhenValidUpdateRequestIsMade() throws Exception {
+        // Given - create an existing site with a customer
+        Customer originalCustomer = new Customer();
+        originalCustomer.setName("Original Customer");
+        originalCustomer.setIsPrivate(false);
+
+        Site originalSite = new Site();
+        originalSite.setName("Original Site Name");
+        originalSite.setCustomer(originalCustomer);
+        originalSite.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        originalSite.setDurationInDays(5);
+        originalSite.setTransport("Van");
+        originalSite.setCreationDate(Instant.now());
+        originalSite.setStatus(SiteStatus.OPEN);
+
+        entityManager.persist(originalSite);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = originalSite.getId();
+
+        // When - send PUT request with updated data
+        String updateRequestBody = """
+                {
+                  "name": "Updated Site Name",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true,
+                  "desired_date": "2026-02-15",
+                  "duration_in_days": 10,
+                  "transport": "Truck and Crane"
+                }
+                """;
+
+        mockMvc.perform(put("/sites/" + siteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestBody))
+                .andExpect(status().isNoContent());
+
+        // Then - verify the site is updated in the database
+        entityManager.flush();
+        entityManager.clear();
+
+        Site updatedSite = entityManager
+                .createQuery("SELECT s FROM Site s WHERE s.id = :id", Site.class)
+                .setParameter("id", siteId)
+                .getSingleResult();
+
+        assertThat(updatedSite.getName()).isEqualTo("Updated Site Name");
+        assertThat(updatedSite.getDesiredDate()).isEqualTo(LocalDate.of(2026, Month.FEBRUARY, 15));
+        assertThat(updatedSite.getDurationInDays()).isEqualTo(10);
+        assertThat(updatedSite.getTransport()).isEqualTo("Truck and Crane");
+
+        // Verify customer is also updated
+        assertThat(updatedSite.getCustomer()).isNotNull();
+        assertThat(updatedSite.getCustomer().getName()).isEqualTo("Updated Customer");
+        assertThat(updatedSite.getCustomer().getIsPrivate()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidUpdateSiteRequests")
+    void shouldReturnBadRequestWhenUpdateRequestIsInvalid(String requestBody) throws Exception {
+        // Given - create an existing site with a customer
+        Customer customer = new Customer();
+        customer.setName("Test Customer");
+        customer.setIsPrivate(false);
+
+        Site site = new Site();
+        site.setName("Test Site");
+        site.setCustomer(customer);
+        site.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        site.setDurationInDays(5);
+        site.setTransport("Van");
+        site.setCreationDate(Instant.now());
+        site.setStatus(SiteStatus.OPEN);
+
+        entityManager.persist(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+
+        // When / Then - send PUT request with invalid data
+        mockMvc.perform(put("/sites/" + siteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingNonExistentSite() throws Exception {
+        // Given - a site ID that doesn't exist
+        Long nonExistentId = 99999L;
+
+        String updateRequestBody = """
+                {
+                  "name": "Updated Site Name",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true,
+                  "desired_date": "2026-02-15",
+                  "duration_in_days": 10,
+                  "transport": "Truck and Crane"
+                }
+                """;
+
+        // When / Then - send PUT request and expect 404
+        mockMvc.perform(put("/sites/" + nonExistentId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestBody))
+                .andExpect(status().isNotFound());
+    }
+
     private static Stream<String> invalidSiteRequests() {
         return Stream.of(
                 // Missing name
@@ -330,6 +443,79 @@ class SiteApiIntegrationTest {
                 {
                   "name": "Construction Site A",
                   "customer_name": ""
+                }
+                """
+        );
+    }
+
+    private static Stream<String> invalidUpdateSiteRequests() {
+        return Stream.of(
+                // Missing name
+                """
+                {
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true,
+                  "duration_in_days": 10
+                }
+                """,
+                // Missing customer_name
+                """
+                {
+                  "name": "Updated Site",
+                  "is_private_customer": true,
+                  "duration_in_days": 10
+                }
+                """,
+                // Missing is_private_customer
+                """
+                {
+                  "name": "Updated Site",
+                  "customer_name": "Updated Customer",
+                  "duration_in_days": 10
+                }
+                """,
+                // Missing duration_in_days
+                """
+                {
+                  "name": "Updated Site",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true
+                }
+                """,
+                // Empty name
+                """
+                {
+                  "name": "",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true,
+                  "duration_in_days": 10
+                }
+                """,
+                // Empty customer_name
+                """
+                {
+                  "name": "Updated Site",
+                  "customer_name": "",
+                  "is_private_customer": true,
+                  "duration_in_days": 10
+                }
+                """,
+                // Null is_private_customer
+                """
+                {
+                  "name": "Updated Site",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": null,
+                  "duration_in_days": 10
+                }
+                """,
+                // Null duration_in_days
+                """
+                {
+                  "name": "Updated Site",
+                  "customer_name": "Updated Customer",
+                  "is_private_customer": true,
+                  "duration_in_days": null
                 }
                 """
         );

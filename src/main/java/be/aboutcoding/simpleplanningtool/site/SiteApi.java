@@ -4,6 +4,7 @@ import be.aboutcoding.simpleplanningtool.site.dto.CreateSiteRequest;
 import be.aboutcoding.simpleplanningtool.site.dto.CustomerResponse;
 import be.aboutcoding.simpleplanningtool.site.dto.OpenSiteResponse;
 import be.aboutcoding.simpleplanningtool.site.dto.SiteResponse;
+import be.aboutcoding.simpleplanningtool.site.dto.UpdateSiteRequest;
 import be.aboutcoding.simpleplanningtool.site.dto.WorkerResponse;
 import be.aboutcoding.simpleplanningtool.worker.Worker;
 import jakarta.validation.Valid;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +56,27 @@ public class SiteApi {
     public ResponseEntity<Void> deleteSite(@PathVariable Long id) {
         siteRepository.deleteById(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> updateSite(@PathVariable Long id, @Valid @RequestBody UpdateSiteRequest request) {
+        return siteRepository.findById(id)
+                .map(site -> {
+                    // Update site fields
+                    site.setName(request.name());
+                    site.setDesiredDate(request.desiredDate());
+                    site.setDurationInDays(request.durationInDays());
+                    site.setTransport(request.transport());
+
+                    // Update customer information
+                    if (site.getCustomer() != null) {
+                        site.getCustomer().setName(request.customerName());
+                        site.getCustomer().setIsPrivate(request.isPrivateCustomer());
+                    }
+
+                    return ResponseEntity.noContent().<Void>build();
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}")
