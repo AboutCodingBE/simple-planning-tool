@@ -68,10 +68,15 @@ public class SiteApi {
                     site.setDurationInDays(request.durationInDays());
                     site.setTransport(request.transport());
 
-                    // Update customer information
+                    // Update or create customer information
                     if (site.getCustomer() != null) {
                         site.getCustomer().setName(request.customerName());
                         site.getCustomer().setIsPrivate(request.isPrivateCustomer());
+                    } else {
+                        Customer newCustomer = new Customer();
+                        newCustomer.setName(request.customerName());
+                        newCustomer.setIsPrivate(request.isPrivateCustomer());
+                        site.setCustomer(newCustomer);
                     }
 
                     return ResponseEntity.noContent().<Void>build();

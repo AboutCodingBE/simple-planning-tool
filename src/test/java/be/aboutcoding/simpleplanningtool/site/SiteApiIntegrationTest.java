@@ -185,6 +185,7 @@ class SiteApiIntegrationTest {
         site.setDurationInDays(7);
         site.setTransport("Truck and Crane");
         site.setWorkers(List.of(worker1, worker2));
+        site.setStatus(SiteStatus.OPEN);
 
         entityManager.persist(worker1);
         entityManager.persist(worker2);
@@ -410,6 +411,64 @@ class SiteApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateRequestBody))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldAddCustomerToSiteWhenUpdatingSiteWithoutCustomer() throws Exception {
+        // Given - create a site without a customer
+        Site siteWithoutCustomer = new Site();
+        siteWithoutCustomer.setName("Site Without Customer");
+        siteWithoutCustomer.setCustomer(null);
+        siteWithoutCustomer.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        siteWithoutCustomer.setDurationInDays(5);
+        siteWithoutCustomer.setTransport("Van");
+        siteWithoutCustomer.setCreationDate(Instant.now());
+        siteWithoutCustomer.setStatus(SiteStatus.OPEN);
+
+        entityManager.persist(siteWithoutCustomer);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = siteWithoutCustomer.getId();
+
+        // When - send PUT request with customer data
+        String updateRequestBody = """
+                {
+                  "name": "Updated Site Name",
+                  "customer_name": "New Customer",
+                  "is_private_customer": true,
+                  "desired_date": "2026-02-15",
+                  "duration_in_days": 10,
+                  "transport": "Truck and Crane"
+                }
+                """;
+
+        mockMvc.perform(put("/sites/" + siteId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateRequestBody))
+                .andExpect(status().isNoContent());
+
+        // Then - verify the site now has a customer
+        entityManager.flush();
+        entityManager.clear();
+
+        Site updatedSite = entityManager
+                .createQuery("SELECT s FROM Site s WHERE s.id = :id", Site.class)
+                .setParameter("id", siteId)
+                .getSingleResult();
+
+        assertThat(updatedSite.getCustomer()).isNotNull();
+        assertThat(updatedSite.getCustomer().getName()).isEqualTo("New Customer");
+        assertThat(updatedSite.getCustomer().getIsPrivate()).isTrue();
+
+        // Verify customer is persisted in the database
+        Customer persistedCustomer = entityManager
+                .createQuery("SELECT c FROM Customer c WHERE c.id = :id", Customer.class)
+                .setParameter("id", updatedSite.getCustomer().getId())
+                .getSingleResult();
+
+        assertThat(persistedCustomer.getName()).isEqualTo("New Customer");
+        assertThat(persistedCustomer.getIsPrivate()).isTrue();
     }
 
     private static Stream<String> invalidSiteRequests() {
