@@ -87,57 +87,8 @@ public class SiteApi {
     @GetMapping("/{id}")
     public ResponseEntity<SiteResponse> getSiteById(@PathVariable Long id) {
         return siteRepository.findById(id)
-                .map(this::toSiteResponse)
+                .map(SiteResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    private SiteResponse toSiteResponse(Site site) {
-        CustomerResponse customerResponse = toCustomerResponse(site.getCustomer());
-        List<WorkerResponse> workerResponses = toWorkerResponses(site.getWorkers());
-
-        LocalDate desiredDate = site.getDesiredDate() != null
-                ? site.getDesiredDate()
-                : null;
-
-        LocalDate plannedDate = site.getExecutionDate() != null
-                ? site.getExecutionDate()
-                : null;
-
-        return new SiteResponse(
-                site.getId(),
-                site.getName(),
-                customerResponse,
-                desiredDate,
-                plannedDate,
-                site.getCreationDate(),
-                site.getDurationInDays(),
-                site.getStatus().toString(),
-                workerResponses
-        );
-    }
-
-    private CustomerResponse toCustomerResponse(Customer customer) {
-        if (customer == null) {
-            return null;
-        }
-        return new CustomerResponse(
-                customer.getId(),
-                customer.getName(),
-                customer.getIsPrivate()
-        );
-    }
-
-    private List<WorkerResponse> toWorkerResponses(List<Worker> workers) {
-        if (workers == null) {
-            return List.of();
-        }
-        return workers.stream()
-                .map(worker -> new WorkerResponse(
-                        worker.getId(),
-                        worker.getFirstName(),
-                        worker.getLastName()
-                ))
-                .toList();
     }
 }

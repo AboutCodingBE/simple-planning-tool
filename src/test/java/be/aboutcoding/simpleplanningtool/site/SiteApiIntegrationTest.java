@@ -206,6 +206,8 @@ class SiteApiIntegrationTest {
                 .andExpect(jsonPath("$.desired_date").value("2026-01-10"))
                 .andExpect(jsonPath("$.planned_date").value("2026-01-15"))
                 .andExpect(jsonPath("$.creation_date").value("2025-12-01T10:30:00Z"))
+                .andExpect(jsonPath("$.transport").value("Truck and Crane"))
+                .andExpect(jsonPath("$.status").value("OPEN"))
                 .andExpect(jsonPath("$.duration_in_days").value(7))
                 .andExpect(jsonPath("$.workers").isArray())
                 .andExpect(jsonPath("$.workers.length()").value(2))

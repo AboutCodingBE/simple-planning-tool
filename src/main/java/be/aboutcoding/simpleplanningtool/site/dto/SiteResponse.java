@@ -17,6 +17,7 @@ public record SiteResponse(
         @JsonProperty("planned_date") LocalDate plannedDate,
         @JsonProperty("creation_date") Instant creationDate,
         @JsonProperty("duration_in_days") Integer durationInDays,
+        String transport,
         String status,
         List<WorkerResponse> workers
 ) {
@@ -32,6 +33,7 @@ public record SiteResponse(
                 site.getExecutionDate(),
                 site.getCreationDate(),
                 site.getDurationInDays(),
+                site.getTransport(),
                 site.getStatus().toString(),
                 workers
         );
@@ -58,7 +60,7 @@ public record SiteResponse(
                 .map(worker -> new WorkerResponse(
                         worker.getId(),
                         worker.getFirstName(),
-                        worker.getFirstName()))
+                        worker.getLastName()))
                 .toList();
     }
 
