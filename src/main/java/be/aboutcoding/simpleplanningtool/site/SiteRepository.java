@@ -19,4 +19,6 @@ public interface SiteRepository extends JpaRepository<Site, Long> {
     );
 
     List<Site> findByStatus(SiteStatus status);
+
+    List<Site> findByStatusAndExecutionDateIsNull(SiteStatus status);
 }

@@ -43,10 +43,19 @@ public class SiteApi {
         return ResponseEntity.ok(savedSite.getId());
     }
 
-    @GetMapping
+    @GetMapping("/open")
     public ResponseEntity<List<OpenSiteResponse>> getAllOpenSites() {
         List<Site> openSites = siteRepository.findByStatus(SiteStatus.OPEN);
         List<OpenSiteResponse> response = openSites.stream()
+                .map(OpenSiteResponse::from)
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/unplanned")
+    public ResponseEntity<List<OpenSiteResponse>> getUnplannedOpenSites() {
+        List<Site> unplannedSites = siteRepository.findByStatusAndExecutionDateIsNull(SiteStatus.OPEN);
+        List<OpenSiteResponse> response = unplannedSites.stream()
                 .map(OpenSiteResponse::from)
                 .toList();
         return ResponseEntity.ok(response);

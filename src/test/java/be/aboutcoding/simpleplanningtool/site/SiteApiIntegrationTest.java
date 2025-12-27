@@ -264,7 +264,7 @@ class SiteApiIntegrationTest {
         entityManager.clear();
 
         // When - send GET request to fetch all open sites
-        mockMvc.perform(get("/sites"))
+        mockMvc.perform(get("/sites/open"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -297,7 +297,129 @@ class SiteApiIntegrationTest {
         entityManager.clear();
 
         // When - send GET request to fetch all open sites
-        mockMvc.perform(get("/sites"))
+        mockMvc.perform(get("/sites/open"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void shouldReturnOnlyOpenSitesWithoutPlannedDateWhenFetchingUnplannedSites() throws Exception {
+        // Given - create sites with different combinations of status and planned date
+        Customer customer1 = new Customer();
+        customer1.setName("Unplanned Site Customer");
+        customer1.setIsPrivate(false);
+
+        Customer customer2 = new Customer();
+        customer2.setName("Planned Site Customer");
+        customer2.setIsPrivate(true);
+
+        Customer customer3 = new Customer();
+        customer3.setName("Done Site Customer");
+        customer3.setIsPrivate(false);
+
+        Customer customer4 = new Customer();
+        customer4.setName("Done Planned Site Customer");
+        customer4.setIsPrivate(false);
+
+        // Open site WITHOUT planned date - SHOULD be returned
+        Site openSiteWithoutPlannedDate = new Site();
+        openSiteWithoutPlannedDate.setName("Unplanned Open Site");
+        openSiteWithoutPlannedDate.setCustomer(customer1);
+        openSiteWithoutPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 10));
+        openSiteWithoutPlannedDate.setExecutionDate(null);
+        openSiteWithoutPlannedDate.setCreationDate(Instant.now());
+        openSiteWithoutPlannedDate.setDurationInDays(4);
+        openSiteWithoutPlannedDate.setStatus(SiteStatus.OPEN);
+
+        // Open site WITH planned date - should NOT be returned
+        Site openSiteWithPlannedDate = new Site();
+        openSiteWithPlannedDate.setName("Planned Open Site");
+        openSiteWithPlannedDate.setCustomer(customer2);
+        openSiteWithPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 15));
+        openSiteWithPlannedDate.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 20));
+        openSiteWithPlannedDate.setCreationDate(Instant.now());
+        openSiteWithPlannedDate.setDurationInDays(10);
+        openSiteWithPlannedDate.setStatus(SiteStatus.OPEN);
+
+        // Done site WITHOUT planned date - should NOT be returned
+        Site doneSiteWithoutPlannedDate = new Site();
+        doneSiteWithoutPlannedDate.setName("Done Unplanned Site");
+        doneSiteWithoutPlannedDate.setCustomer(customer3);
+        doneSiteWithoutPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 5));
+        doneSiteWithoutPlannedDate.setExecutionDate(null);
+        doneSiteWithoutPlannedDate.setCreationDate(Instant.now());
+        doneSiteWithoutPlannedDate.setDurationInDays(7);
+        doneSiteWithoutPlannedDate.setStatus(SiteStatus.DONE);
+
+        // Done site WITH planned date - should NOT be returned
+        Site doneSiteWithPlannedDate = new Site();
+        doneSiteWithPlannedDate.setName("Done Planned Site");
+        doneSiteWithPlannedDate.setCustomer(customer4);
+        doneSiteWithPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 5));
+        doneSiteWithPlannedDate.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 6));
+        doneSiteWithPlannedDate.setCreationDate(Instant.now());
+        doneSiteWithPlannedDate.setDurationInDays(3);
+        doneSiteWithPlannedDate.setStatus(SiteStatus.DONE);
+
+        entityManager.persist(openSiteWithoutPlannedDate);
+        entityManager.persist(openSiteWithPlannedDate);
+        entityManager.persist(doneSiteWithoutPlannedDate);
+        entityManager.persist(doneSiteWithPlannedDate);
+        entityManager.flush();
+        entityManager.clear();
+
+        // When - send GET request to fetch unplanned sites
+        mockMvc.perform(get("/sites/unplanned"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value(openSiteWithoutPlannedDate.getId()))
+                .andExpect(jsonPath("$[0].name").value("Unplanned Open Site"))
+                .andExpect(jsonPath("$[0].customer_name").value("Unplanned Site Customer"))
+                .andExpect(jsonPath("$[0].duration_in_days").value(4))
+                .andExpect(jsonPath("$[0].desired_date").value("2026-01-10"))
+                .andExpect(jsonPath("$[0].planned_date").isEmpty());
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoUnplannedSitesExist() throws Exception {
+        // Given - create sites that should NOT be returned
+        Customer customer1 = new Customer();
+        customer1.setName("Planned Site Customer");
+        customer1.setIsPrivate(true);
+
+        Customer customer2 = new Customer();
+        customer2.setName("Done Site Customer");
+        customer2.setIsPrivate(false);
+
+        // Open site WITH planned date - should NOT be returned
+        Site openSiteWithPlannedDate = new Site();
+        openSiteWithPlannedDate.setName("Planned Open Site");
+        openSiteWithPlannedDate.setCustomer(customer1);
+        openSiteWithPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 15));
+        openSiteWithPlannedDate.setExecutionDate(LocalDate.of(2026, Month.JANUARY, 20));
+        openSiteWithPlannedDate.setCreationDate(Instant.now());
+        openSiteWithPlannedDate.setDurationInDays(10);
+        openSiteWithPlannedDate.setStatus(SiteStatus.OPEN);
+
+        // Done site WITHOUT planned date - should NOT be returned
+        Site doneSiteWithoutPlannedDate = new Site();
+        doneSiteWithoutPlannedDate.setName("Done Unplanned Site");
+        doneSiteWithoutPlannedDate.setCustomer(customer2);
+        doneSiteWithoutPlannedDate.setDesiredDate(LocalDate.of(2026, Month.JANUARY, 5));
+        doneSiteWithoutPlannedDate.setExecutionDate(null);
+        doneSiteWithoutPlannedDate.setCreationDate(Instant.now());
+        doneSiteWithoutPlannedDate.setDurationInDays(7);
+        doneSiteWithoutPlannedDate.setStatus(SiteStatus.DONE);
+
+        entityManager.persist(openSiteWithPlannedDate);
+        entityManager.persist(doneSiteWithoutPlannedDate);
+        entityManager.flush();
+        entityManager.clear();
+
+        // When - send GET request to fetch unplanned sites
+        mockMvc.perform(get("/sites/unplanned"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$.length()").value(0));
