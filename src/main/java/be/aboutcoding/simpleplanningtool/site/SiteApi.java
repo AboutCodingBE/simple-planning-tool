@@ -9,6 +9,7 @@ import be.aboutcoding.simpleplanningtool.site.dto.WorkerResponse;
 import be.aboutcoding.simpleplanningtool.worker.Worker;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,6 +27,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/sites")
+@Transactional
 public class SiteApi {
 
     private final SiteRepository siteRepository;
@@ -45,7 +47,7 @@ public class SiteApi {
 
     @GetMapping("/open")
     public ResponseEntity<List<OpenSiteResponse>> getAllOpenSites() {
-        List<Site> openSites = siteRepository.findByStatus(SiteStatus.OPEN);
+        List<Site> openSites = siteRepository.findByStatusOrderByCreationDateAsc(SiteStatus.OPEN);
         List<OpenSiteResponse> response = openSites.stream()
                 .map(OpenSiteResponse::from)
                 .toList();
@@ -88,6 +90,7 @@ public class SiteApi {
                         site.setCustomer(newCustomer);
                     }
 
+                    siteRepository.save(site);
                     return ResponseEntity.noContent().<Void>build();
                 })
                 .orElse(ResponseEntity.notFound().build());

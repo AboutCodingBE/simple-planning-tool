@@ -6,6 +6,7 @@ import be.aboutcoding.simpleplanningtool.site.Site;
 import be.aboutcoding.simpleplanningtool.site.SiteRepository;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/planning")
+@Transactional
 public class PlanningApi {
 
     private final SiteRepository siteRepository;
@@ -52,6 +54,7 @@ public class PlanningApi {
         // Update execution date
         site.setExecutionDate(date);
         siteRepository.save(site);
+        siteRepository.flush();
 
         return ResponseEntity.noContent().build();
     }

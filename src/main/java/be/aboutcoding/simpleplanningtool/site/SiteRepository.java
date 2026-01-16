@@ -18,7 +18,7 @@ public interface SiteRepository extends JpaRepository<Site, Long> {
             @Param("untilDate") LocalDate untilDate
     );
 
-    List<Site> findByStatus(SiteStatus status);
+    List<Site> findByStatusOrderByCreationDateAsc(SiteStatus status);
 
     List<Site> findByStatusAndExecutionDateIsNull(SiteStatus status);
 }
