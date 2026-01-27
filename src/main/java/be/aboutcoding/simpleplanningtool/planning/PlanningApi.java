@@ -1,6 +1,9 @@
 package be.aboutcoding.simpleplanningtool.planning;
 
+import be.aboutcoding.simpleplanningtool.planning.dayplanning.DayPlanningFlowController;
+import be.aboutcoding.simpleplanningtool.planning.dto.DayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
+import be.aboutcoding.simpleplanningtool.planning.model.DayOverview;
 import be.aboutcoding.simpleplanningtool.planning.model.Planning;
 import be.aboutcoding.simpleplanningtool.site.Site;
 import be.aboutcoding.simpleplanningtool.site.SiteRepository;
@@ -25,12 +28,15 @@ public class PlanningApi {
     private final LinkWorkerToSite linkWorkerToSite;
     private final GetPlanning getPlanning;
     private final PlanningResponseMapper planningResponseMapper;
+    private final DayPlanningFlowController dayPlanningFlowController;
 
-    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper) {
+    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, GetPlanning getPlanning,
+                       PlanningResponseMapper planningResponseMapper, DayPlanningFlowController dayPlanningFlowController) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
         this.getPlanning = getPlanning;
         this.planningResponseMapper = planningResponseMapper;
+        this.dayPlanningFlowController = dayPlanningFlowController;
     }
 
     @PatchMapping("/sites/{siteId}")
@@ -84,6 +90,15 @@ public class PlanningApi {
 
         Planning planning = getPlanning.execute(fromDate, untilDate);
         PlanningResponse response = planningResponseMapper.toResponse(planning);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/day")
+    public ResponseEntity<DayOverviewResponse> getDayOverview(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        DayOverview dayOverview = dayPlanningFlowController.execute(date);
+        DayOverviewResponse response = DayOverviewResponse.from(dayOverview);
         return ResponseEntity.ok(response);
     }
 }

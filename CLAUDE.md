@@ -30,7 +30,27 @@ This is a Spring Boot 4.0 application for work site and worker planning. The app
 
 - Mapping of a request object to a domain modle should be part of that request object
 - Mapping of a domain model to a response object should be part of the reponsne object
-- NEVER run tests yourself. I am always in control of running tests. 
+- NEVER run tests yourself. I am always in control of running tests.
+
+## Feature Development Workflow
+
+When building a new feature, follow this workflow:
+
+1. **Start with a happy path test**: Write an end-to-end test or integration test that verifies the feature works as intended with normal inputs (no corner cases). This test will fail initially, which is expected.
+
+2. **Implement the feature**: For small features, implement the code needed to make the happy path test pass.
+
+3. **Verify implementation**: The user will run the test to verify if the feature works correctly.
+   - If the test fails: Adjust the code until it passes
+   - If the test passes: Move to step 4
+
+4. **Add corner case tests**: Write a test for a specific corner case.
+
+5. **Implement corner case handling**: Write the code to handle that corner case.
+
+6. **Iterate**: Repeat steps 4-5 until all corner cases are covered and the feature is fully implemented.
+
+**Important**: Never run tests yourself. The user is always in control of running tests.
 
 ## Architecture
 

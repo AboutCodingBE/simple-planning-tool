@@ -2,6 +2,7 @@ package be.aboutcoding.simpleplanningtool.planning;
 
 import be.aboutcoding.simpleplanningtool.site.Customer;
 import be.aboutcoding.simpleplanningtool.site.Site;
+import be.aboutcoding.simpleplanningtool.site.SiteStatus;
 import be.aboutcoding.simpleplanningtool.worker.Worker;
 import jakarta.persistence.EntityManager;
 import net.bytebuddy.asm.Advice;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -320,6 +322,122 @@ class PlanningApiIntegrationTest {
                 // Both invalid
                 Arguments.of("invalid", "also-invalid")
         );
+    }
+
+    @Test
+    void shouldNotReturnSitesWithoutExecutionDateOrNonOpenStatus() throws Exception {
+        // Given - create three sites
+        // Site 1: OPEN status with execution date (should be returned)
+        Site site1 = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site1.setName("Valid Site");
+        site1.setDurationInDays(5);
+        entityManager.merge(site1);
+
+        // Site 2: OPEN status but NO execution date (should NOT be returned)
+        Site site2 = createAndPersistSite(null);
+        site2.setName("Site Without Execution Date");
+        entityManager.merge(site2);
+
+        // Site 3: Has execution date but status is DONE (should NOT be returned)
+        Site site3 = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site3.setName("Completed Site");
+        site3.setDurationInDays(5);
+        site3.setStatus(SiteStatus.DONE);
+        entityManager.merge(site3);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-22 (falls within site1's execution period)
+        LocalDate queryDate = LocalDate.of(2026, 1, 22);
+
+        // When - send GET request to get day overview
+        mockMvc.perform(get("/planning/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-22"))
+                .andExpect(jsonPath("$.plannedSites").isArray())
+                .andExpect(jsonPath("$.plannedSites.length()").value(1))
+                // Verify only site1 is returned
+                .andExpect(jsonPath("$.plannedSites[0].site_id").value(site1.getId()))
+                .andExpect(jsonPath("$.plannedSites[0].site_name").value("Valid Site"))
+                .andExpect(jsonPath("$.plannedSites[0].site_status").value("OPEN"));
+    }
+
+    @Test
+    void shouldNotReturnSiteWhenQueryDateIsAfterSiteEndDate() throws Exception {
+        // Given - create a site with execution date 2026-01-20 and duration 5 days
+        // End date will be 2026-01-24 (execution_date + duration - 1)
+        Site site = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site.setName("Construction Site");
+        site.setDurationInDays(5);
+        entityManager.merge(site);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-25 (one day after the site's end date)
+        LocalDate queryDate = LocalDate.of(2026, 1, 25);
+
+        // When - send GET request to get day overview
+        mockMvc.perform(get("/planning/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-25"))
+                .andExpect(jsonPath("$.plannedSites").isArray())
+                .andExpect(jsonPath("$.plannedSites.length()").value(0));
+    }
+
+    @Test
+    void shouldReturnOnlySiteActiveOnGivenDateWithWorker() throws Exception {
+        // Given - create two sites with non-overlapping execution periods
+        // Site 1: execution date 2026-01-20, duration 5 days (ends 2026-01-25)
+        Site site1 = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site1.setName("Downtown Office Complex");
+        site1.setDurationInDays(6);
+        entityManager.merge(site1);
+
+        // Create and assign a worker to site 1
+        Worker worker = new Worker("John", "Smith");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        site1.setWorkers(List.of(worker));
+        entityManager.merge(site1);
+
+        // Site 2: execution date 2026-02-10, duration 3 days (ends 2026-02-13)
+        Site site2 = createAndPersistSite(LocalDate.of(2026, 2, 10));
+        site2.setName("Harbor Warehouse");
+        site2.setDurationInDays(3);
+        entityManager.merge(site2);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-23 (falls within site1's period, but not site2's)
+        LocalDate queryDate = LocalDate.of(2026, 1, 23);
+
+        // When - send GET request to get day overview
+        mockMvc.perform(get("/planning/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-23"))
+                .andExpect(jsonPath("$.plannedSites").isArray())
+                .andExpect(jsonPath("$.plannedSites.length()").value(1))
+                // Verify site details
+                .andExpect(jsonPath("$.plannedSites[0].site_id").value(site1.getId().toString()))
+                .andExpect(jsonPath("$.plannedSites[0].site_name").value("Downtown Office Complex"))
+                .andExpect(jsonPath("$.plannedSites[0].execution_date").value("2026-01-20"))
+                .andExpect(jsonPath("$.plannedSites[0].duration_in_days").value(6))
+                .andExpect(jsonPath("$.plannedSites[0].end_date").value("2026-01-25"))
+                .andExpect(jsonPath("$.plannedSites[0].days_remaining").value(3))
+                .andExpect(jsonPath("$.plannedSites[0].site_status").value("OPEN"))
+                // Verify worker details
+                .andExpect(jsonPath("$.plannedSites[0].workers").isArray())
+                .andExpect(jsonPath("$.plannedSites[0].workers.length()").value(1))
+                .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_id").value(worker.getId().toString()))
+                .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_firstname").value("John"))
+                .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_lastname").value("Smith"));
     }
 
     private Site createAndPersistSite(LocalDate executionDate) {
