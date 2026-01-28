@@ -5,3 +5,4 @@
 - Refactor the get planning. Right now the SiteRepository is calling the database function, but I want it in a planning repository
 - The planning api errors need to be better. There needs to be a message saying what went wrong. 
 - Refactor the planning PATCH endpoint. A patch typically receives a body to update. 
+- Check all features and see if cna be simplyfied

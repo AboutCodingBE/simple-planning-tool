@@ -388,6 +388,22 @@ class PlanningApiIntegrationTest {
                 .andExpect(jsonPath("$.plannedSites.length()").value(0));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "01-20-2026",      // Wrong format: MM-dd-yyyy
+            "20/01/2026",      // Wrong format: dd/MM/yyyy
+            "2026/01/20",      // Wrong format: yyyy/MM/dd (slashes instead of dashes)
+            "not-a-date",      // Invalid format
+            "2026-13-01",      // Invalid month
+            "2026-02-30"       // Invalid day
+    })
+    void shouldReturnBadRequestWhenDateIsNotInIsoFormat(String invalidDate) throws Exception {
+        // When / Then - send GET request with invalid date format
+        mockMvc.perform(get("/planning/day")
+                        .queryParam("date", invalidDate))
+                .andExpect(status().isBadRequest());
+    }
+
     @Test
     void shouldReturnOnlySiteActiveOnGivenDateWithWorker() throws Exception {
         // Given - create two sites with non-overlapping execution periods
