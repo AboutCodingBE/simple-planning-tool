@@ -34,7 +34,7 @@ This is a Spring Boot 4.0 application for work site and worker planning. The app
 
 ## Feature Development Workflow
 
-When building a new feature, follow this workflow:
+When building a new feature, follow the below workflow. However, you never start writing code without me saying so. 
 
 1. **Start with a happy path test**: Write an end-to-end test or integration test that verifies the feature works as intended with normal inputs (no corner cases). This test will fail initially, which is expected.
 

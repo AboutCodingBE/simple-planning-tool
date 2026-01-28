@@ -324,6 +324,17 @@ class PlanningApiIntegrationTest {
         );
     }
 
+    private static Stream<String> invalidIsoDateFormats() {
+        return Stream.of(
+                "01-20-2026",      // Wrong format: MM-dd-yyyy
+                "20/01/2026",      // Wrong format: dd/MM/yyyy
+                "2026/01/20",      // Wrong format: yyyy/MM/dd (slashes instead of dashes)
+                "not-a-date",      // Invalid format
+                "2026-13-01",      // Invalid month
+                "2026-02-30"       // Invalid day
+        );
+    }
+
     @Test
     void shouldNotReturnSitesWithoutExecutionDateOrNonOpenStatus() throws Exception {
         // Given - create three sites
@@ -389,14 +400,7 @@ class PlanningApiIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {
-            "01-20-2026",      // Wrong format: MM-dd-yyyy
-            "20/01/2026",      // Wrong format: dd/MM/yyyy
-            "2026/01/20",      // Wrong format: yyyy/MM/dd (slashes instead of dashes)
-            "not-a-date",      // Invalid format
-            "2026-13-01",      // Invalid month
-            "2026-02-30"       // Invalid day
-    })
+    @MethodSource("invalidIsoDateFormats")
     void shouldReturnBadRequestWhenDateIsNotInIsoFormat(String invalidDate) throws Exception {
         // When / Then - send GET request with invalid date format
         mockMvc.perform(get("/planning/day")
@@ -454,6 +458,54 @@ class PlanningApiIntegrationTest {
                 .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_id").value(worker.getId().toString()))
                 .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_firstname").value("John"))
                 .andExpect(jsonPath("$.plannedSites[0].workers[0].worker_lastname").value("Smith"));
+    }
+
+    @Test
+    void shouldReturnIdleWorkersWhenSomeWorkersAreNotAssignedToAnySite() throws Exception {
+        // Given - create three workers
+        Worker assignedWorker = new Worker("John", "Assigned");
+        Worker idleWorker1 = new Worker("Jane", "Idle");
+        Worker idleWorker2 = new Worker("Bob", "Idle");
+        entityManager.persist(assignedWorker);
+        entityManager.persist(idleWorker1);
+        entityManager.persist(idleWorker2);
+        entityManager.flush();
+
+        // Create an OPEN site with execution date 2026-01-20 and duration 5 days (ends 2026-01-24)
+        Site site = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site.setDurationInDays(5);
+        site.setWorkers(List.of(assignedWorker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-22 (falls within the site's execution period)
+        LocalDate queryDate = LocalDate.of(2026, 1, 22);
+
+        // When - send GET request to get idle workers
+        mockMvc.perform(get("/planning/idle")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-22"))
+                .andExpect(jsonPath("$.idle_workers").isArray())
+                .andExpect(jsonPath("$.idle_workers.length()").value(2))
+                // Verify idle worker 1
+                .andExpect(jsonPath("$.idle_workers[0].id").value(idleWorker1.getId()))
+                .andExpect(jsonPath("$.idle_workers[0].first_name").value("Jane"))
+                .andExpect(jsonPath("$.idle_workers[0].last_name").value("Idle"))
+                // Verify idle worker 2
+                .andExpect(jsonPath("$.idle_workers[1].id").value(idleWorker2.getId()))
+                .andExpect(jsonPath("$.idle_workers[1].first_name").value("Bob"))
+                .andExpect(jsonPath("$.idle_workers[1].last_name").value("Idle"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidIsoDateFormats")
+    void shouldReturnBadRequestWhenIdleWorkersDateIsNotInIsoFormat(String invalidDate) throws Exception {
+        // When / Then - send GET request with invalid date format
+        mockMvc.perform(get("/planning/idle")
+                        .queryParam("date", invalidDate))
+                .andExpect(status().isBadRequest());
     }
 
     private Site createAndPersistSite(LocalDate executionDate) {

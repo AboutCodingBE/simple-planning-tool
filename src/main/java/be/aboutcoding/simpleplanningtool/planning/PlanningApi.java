@@ -2,6 +2,7 @@ package be.aboutcoding.simpleplanningtool.planning;
 
 import be.aboutcoding.simpleplanningtool.planning.dayplanning.DayPlanningFlowController;
 import be.aboutcoding.simpleplanningtool.planning.dto.DayOverviewResponse;
+import be.aboutcoding.simpleplanningtool.planning.dto.IdleWorkersResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
 import be.aboutcoding.simpleplanningtool.planning.model.DayOverview;
 import be.aboutcoding.simpleplanningtool.planning.model.Planning;
@@ -29,14 +30,17 @@ public class PlanningApi {
     private final GetPlanning getPlanning;
     private final PlanningResponseMapper planningResponseMapper;
     private final DayPlanningFlowController dayPlanningFlowController;
+    private final GetIdleWorkers getIdleWorkers;
 
     public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, GetPlanning getPlanning,
-                       PlanningResponseMapper planningResponseMapper, DayPlanningFlowController dayPlanningFlowController) {
+                       PlanningResponseMapper planningResponseMapper, DayPlanningFlowController dayPlanningFlowController,
+                       GetIdleWorkers getIdleWorkers) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
         this.getPlanning = getPlanning;
         this.planningResponseMapper = planningResponseMapper;
         this.dayPlanningFlowController = dayPlanningFlowController;
+        this.getIdleWorkers = getIdleWorkers;
     }
 
     @PatchMapping("/sites/{siteId}")
@@ -99,6 +103,15 @@ public class PlanningApi {
 
         DayOverview dayOverview = dayPlanningFlowController.execute(date);
         DayOverviewResponse response = DayOverviewResponse.from(dayOverview);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/idle")
+    public ResponseEntity<IdleWorkersResponse> getIdleWorkers(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        var idleWorkers = getIdleWorkers.execute(date);
+        var response =  IdleWorkersResponse.from(date, idleWorkers);
         return ResponseEntity.ok(response);
     }
 }
