@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.util.List;
 
 @RestController
 @RequestMapping("/workers")
@@ -35,6 +36,16 @@ public class WorkerApi {
         Worker savedWorker = workerRepository.save(worker);
 
         return ResponseEntity.ok(savedWorker.getId());
+    }
+
+    @GetMapping
+    public ResponseEntity<List<WorkerResponse>> getAllWorkers() {
+        List<Worker> workers = workerRepository.findAllOrderedById();
+        List<WorkerResponse> response = workers.stream()
+                .map(WorkerResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

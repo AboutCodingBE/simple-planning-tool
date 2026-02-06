@@ -13,13 +13,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -195,7 +194,7 @@ class WorkerApiIntegrationTest {
     void shouldReturnBadRequestWhenUpdateRequestHasMissingFields(String requestBody) throws Exception {
         // Given - create a worker in the database
         Worker worker = new Worker("Charlie", "Davis");
-        worker.setDateOfCreation(java.sql.Timestamp.from(java.time.Instant.now()));
+        worker.setDateOfCreation(Timestamp.from(Instant.now()));
         entityManager.persist(worker);
         entityManager.flush();
         entityManager.clear();
@@ -226,6 +225,32 @@ class WorkerApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateRequestBody))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturnAllWorkers() throws Exception {
+        // Given
+        Worker worker = new Worker("Charlie", "Davis");
+        worker.setDateOfCreation(Timestamp.from(Instant.now()));
+        entityManager.persist(worker);
+
+        Worker worker2 = new Worker("Sandy", "Worksalot");
+        worker.setDateOfCreation(Timestamp.from(Instant.now()));
+        entityManager.persist(worker2);
+        entityManager.flush();
+        entityManager.clear();
+
+        // When / Then
+        mockMvc.perform(get("/workers")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(worker.getId()))
+                .andExpect(jsonPath("$[0].first_name").value("Charlie"))
+                .andExpect(jsonPath("$[0].last_name").value("Davis"))
+                .andExpect(jsonPath("$[1].id").value(worker2.getId()))
+                .andExpect(jsonPath("$[1].first_name").value("Sandy"))
+                .andExpect(jsonPath("$[1].last_name").value("Worksalot"));
+
     }
 
     private static Stream<String> invalidWorkerRequests() {

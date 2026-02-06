@@ -6,3 +6,4 @@
 - The planning api errors need to be better. There needs to be a message saying what went wrong. 
 - Refactor the planning PATCH endpoint. A patch typically receives a body to update. 
 - Check all features and see if cna be simplyfied
+- Make 'get idle workers' tests so that order doesn't matter
