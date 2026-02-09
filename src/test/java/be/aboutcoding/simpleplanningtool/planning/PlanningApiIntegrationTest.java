@@ -226,6 +226,58 @@ class PlanningApiIntegrationTest {
     }
 
     @Test
+    void shouldUnlinkWorkerFromSiteWhenWorkerIsLinkedToSite() throws Exception {
+        // Given - create a site with an execution date and a worker
+        Site site = createAndPersistSite(LocalDate.of(2026, 6, 15));
+
+        Worker worker = new Worker("Alice", "Engineer");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        // Link the worker to the site
+        site.setWorkers(List.of(worker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+        Long workerId = worker.getId();
+
+        // When - send PATCH request to unlink the worker from the site
+        mockMvc.perform(patch("/planning/sites/" + siteId + "/unlink")
+                        .queryParam("workerId", workerId.toString()))
+                .andExpect(status().isNoContent());
+
+        // Then - verify the worker is no longer linked to the site
+        entityManager.flush();
+        entityManager.clear();
+
+        Site updatedSite = entityManager
+                .createQuery("SELECT s FROM Site s LEFT JOIN FETCH s.workers WHERE s.id = :id", Site.class)
+                .setParameter("id", siteId)
+                .getSingleResult();
+
+        assertThat(updatedSite.getWorkers()).isEmpty();
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUnlinkingWorkerFromNonExistentSite() throws Exception {
+        // Given - create a worker but no site
+        Worker worker = new Worker("Charlie", "Developer");
+        entityManager.persist(worker);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long workerId = worker.getId();
+        Long nonExistentSiteId = 99999L;
+
+        // When / Then - send PATCH request to unlink worker from non-existent site
+        mockMvc.perform(patch("/planning/sites/" + nonExistentSiteId + "/unlink")
+                        .queryParam("workerId", workerId.toString()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void shouldReturnPlanningWithWorkdaysWhenValidFromAndUntilDatesAreProvided() throws Exception {
         // Given - create a site with execution date on Dec 2, 2026
         Customer customer = new Customer();

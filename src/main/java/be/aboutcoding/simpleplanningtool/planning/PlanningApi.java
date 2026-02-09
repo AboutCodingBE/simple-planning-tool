@@ -27,16 +27,18 @@ public class PlanningApi {
 
     private final SiteRepository siteRepository;
     private final LinkWorkerToSite linkWorkerToSite;
+    private final UnlinkWorker unlinkWorker;
     private final GetPlanning getPlanning;
     private final PlanningResponseMapper planningResponseMapper;
     private final DayPlanningFlowController dayPlanningFlowController;
     private final GetIdleWorkers getIdleWorkers;
 
-    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, GetPlanning getPlanning,
-                       PlanningResponseMapper planningResponseMapper, DayPlanningFlowController dayPlanningFlowController,
-                       GetIdleWorkers getIdleWorkers) {
+    public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, UnlinkWorker unlinkWorker,
+                       GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper,
+                       DayPlanningFlowController dayPlanningFlowController, GetIdleWorkers getIdleWorkers) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
+        this.unlinkWorker = unlinkWorker;
         this.getPlanning = getPlanning;
         this.planningResponseMapper = planningResponseMapper;
         this.dayPlanningFlowController = dayPlanningFlowController;
@@ -75,6 +77,15 @@ public class PlanningApi {
             @RequestParam Long workerId) {
 
         linkWorkerToSite.execute(siteId, workerId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/sites/{siteId}/unlink")
+    public ResponseEntity<Void> unlinkWorkerFromSite(
+            @PathVariable Long siteId,
+            @RequestParam Long workerId) {
+
+        unlinkWorker.execute(siteId, workerId);
         return ResponseEntity.noContent().build();
     }
 

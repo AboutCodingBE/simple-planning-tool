@@ -7,3 +7,4 @@
 - Refactor the planning PATCH endpoint. A patch typically receives a body to update. 
 - Check all features and see if cna be simplyfied
 - Make 'get idle workers' tests so that order doesn't matter
+- Investigate if multiple flush operations in tests are necessary.
