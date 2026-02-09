@@ -226,6 +226,43 @@ class PlanningApiIntegrationTest {
     }
 
     @Test
+    void shouldHandleLinkingAlreadyLinkedWorkerToSite() throws Exception {
+        // Given - create a site with an execution date and a worker
+        Site site = createAndPersistSite(LocalDate.of(2026, 6, 15));
+
+        Worker worker = new Worker("Sarah", "Designer");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        // Link the worker to the site initially
+        site.setWorkers(List.of(worker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        Long siteId = site.getId();
+        Long workerId = worker.getId();
+
+        // When - send PATCH request to link the same worker again
+        mockMvc.perform(patch("/planning/sites/" + siteId + "/workers")
+                        .queryParam("workerId", workerId.toString()))
+                .andExpect(status().isNoContent());
+
+        // Then - verify the worker is still linked and appears only once
+        entityManager.flush();
+        entityManager.clear();
+
+        Site updatedSite = entityManager
+                .createQuery("SELECT s FROM Site s LEFT JOIN FETCH s.workers WHERE s.id = :id", Site.class)
+                .setParameter("id", siteId)
+                .getSingleResult();
+
+        assertThat(updatedSite.getWorkers()).isNotNull();
+        assertThat(updatedSite.getWorkers()).hasSize(1);
+        assertThat(updatedSite.getWorkers().get(0).getId()).isEqualTo(workerId);
+    }
+
+    @Test
     void shouldUnlinkWorkerFromSiteWhenWorkerIsLinkedToSite() throws Exception {
         // Given - create a site with an execution date and a worker
         Site site = createAndPersistSite(LocalDate.of(2026, 6, 15));

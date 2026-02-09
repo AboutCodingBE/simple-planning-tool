@@ -8,3 +8,5 @@
 - Check all features and see if cna be simplyfied
 - Make 'get idle workers' tests so that order doesn't matter
 - Investigate if multiple flush operations in tests are necessary.
+- The patch for linking and unlinking makes no sense. Also the url's are no good. one uses worker, the other uses link. 
+- Check for idempotency of endpoints
