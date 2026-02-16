@@ -315,6 +315,159 @@ class PlanningApiIntegrationTest {
     }
 
     @Test
+    void shouldReturnWorkerDayOverviewWithAssignedAndUnassignedWorkers() throws Exception {
+        // Given - create three workers
+        Worker assignedWorker1 = new Worker("Alice", "Engineer");
+        Worker assignedWorker2 = new Worker("Bob", "Builder");
+        Worker unassignedWorker = new Worker("Charlie", "Designer");
+        entityManager.persist(assignedWorker1);
+        entityManager.persist(assignedWorker2);
+        entityManager.persist(unassignedWorker);
+        entityManager.flush();
+
+        // Create an OPEN site with execution date 2026-01-20 and duration 5 days (ends 2026-01-24)
+        Site site = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site.setName("Downtown Construction");
+        site.setDurationInDays(5);
+        site.setWorkers(List.of(assignedWorker1, assignedWorker2));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-22 (falls within the site's execution period)
+        LocalDate queryDate = LocalDate.of(2026, 1, 22);
+
+        // When - send GET request to get worker day overview
+        mockMvc.perform(get("/planning/worker/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-22"))
+                .andExpect(jsonPath("$.day_overview").isArray())
+                .andExpect(jsonPath("$.day_overview.length()").value(3))
+                // Verify assigned worker 1
+                .andExpect(jsonPath("$.day_overview[0].id").value(assignedWorker1.getId()))
+                .andExpect(jsonPath("$.day_overview[0].firstname").value("Alice"))
+                .andExpect(jsonPath("$.day_overview[0].lastname").value("Engineer"))
+                .andExpect(jsonPath("$.day_overview[0].current_site").isNotEmpty())
+                .andExpect(jsonPath("$.day_overview[0].current_site.name").value("Downtown Construction"))
+                .andExpect(jsonPath("$.day_overview[0].current_site.until").value("2026-01-24"))
+                // Verify assigned worker 2
+                .andExpect(jsonPath("$.day_overview[1].id").value(assignedWorker2.getId()))
+                .andExpect(jsonPath("$.day_overview[1].firstname").value("Bob"))
+                .andExpect(jsonPath("$.day_overview[1].lastname").value("Builder"))
+                .andExpect(jsonPath("$.day_overview[1].current_site").isNotEmpty())
+                .andExpect(jsonPath("$.day_overview[1].current_site.name").value("Downtown Construction"))
+                .andExpect(jsonPath("$.day_overview[1].current_site.until").value("2026-01-24"))
+                // Verify unassigned worker
+                .andExpect(jsonPath("$.day_overview[2].id").value(unassignedWorker.getId()))
+                .andExpect(jsonPath("$.day_overview[2].firstname").value("Charlie"))
+                .andExpect(jsonPath("$.day_overview[2].lastname").value("Designer"))
+                .andExpect(jsonPath("$.day_overview[2].current_site").isEmpty());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidIsoDateFormats")
+    void shouldReturnBadRequestWhenWorkerDayOverviewDateIsNotInIsoFormat(String invalidDate) throws Exception {
+        // When / Then - send GET request with invalid date format
+        mockMvc.perform(get("/planning/worker/day")
+                        .queryParam("date", invalidDate))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnWorkerWithoutSiteWhenQueryDateIsOutsideSiteExecutionPeriod() throws Exception {
+        // Given - create a worker assigned to a site from 2026-01-20 to 2026-01-24
+        Worker worker = new Worker("David", "Electrician");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        Site site = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site.setName("Office Building");
+        site.setDurationInDays(5); // Ends on 2026-01-24
+        site.setWorkers(List.of(worker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-25 (one day after the site's end date)
+        LocalDate queryDate = LocalDate.of(2026, 1, 25);
+
+        // When - send GET request to get worker day overview
+        mockMvc.perform(get("/planning/worker/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-25"))
+                .andExpect(jsonPath("$.day_overview").isArray())
+                .andExpect(jsonPath("$.day_overview.length()").value(1))
+                .andExpect(jsonPath("$.day_overview[0].id").value(worker.getId()))
+                .andExpect(jsonPath("$.day_overview[0].firstname").value("David"))
+                .andExpect(jsonPath("$.day_overview[0].lastname").value("Electrician"))
+                .andExpect(jsonPath("$.day_overview[0].current_site").isEmpty());
+    }
+
+    @Test
+    void shouldReturnWorkerWithoutSiteWhenAssignedToNonOpenSite() throws Exception {
+        // Given - create a worker assigned to a DONE site
+        Worker worker = new Worker("Emily", "Plumber");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        Site site = createAndPersistSite(LocalDate.of(2026, 1, 20));
+        site.setName("Completed Project");
+        site.setDurationInDays(5);
+        site.setStatus(SiteStatus.DONE); // Site is DONE, not OPEN
+        site.setWorkers(List.of(worker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: 2026-01-22 (within the site's execution period, but site is DONE)
+        LocalDate queryDate = LocalDate.of(2026, 1, 22);
+
+        // When - send GET request to get worker day overview
+        mockMvc.perform(get("/planning/worker/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-22"))
+                .andExpect(jsonPath("$.day_overview").isArray())
+                .andExpect(jsonPath("$.day_overview.length()").value(1))
+                .andExpect(jsonPath("$.day_overview[0].id").value(worker.getId()))
+                .andExpect(jsonPath("$.day_overview[0].firstname").value("Emily"))
+                .andExpect(jsonPath("$.day_overview[0].lastname").value("Plumber"))
+                .andExpect(jsonPath("$.day_overview[0].current_site").isEmpty());
+    }
+
+    @Test
+    void shouldReturnWorkerWithoutSiteWhenAssignedToSiteWithoutExecutionDate() throws Exception {
+        // Given - create a worker assigned to a site without execution date
+        Worker worker = new Worker("Frank", "Carpenter");
+        entityManager.persist(worker);
+        entityManager.flush();
+
+        Site site = createAndPersistSite(null); // No execution date
+        site.setName("Unplanned Site");
+        site.setWorkers(List.of(worker));
+        entityManager.merge(site);
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query date: any date
+        LocalDate queryDate = LocalDate.of(2026, 1, 22);
+
+        // When - send GET request to get worker day overview
+        mockMvc.perform(get("/planning/worker/day")
+                        .queryParam("date", queryDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.date").value("2026-01-22"))
+                .andExpect(jsonPath("$.day_overview").isArray())
+                .andExpect(jsonPath("$.day_overview.length()").value(1))
+                .andExpect(jsonPath("$.day_overview[0].id").value(worker.getId()))
+                .andExpect(jsonPath("$.day_overview[0].firstname").value("Frank"))
+                .andExpect(jsonPath("$.day_overview[0].lastname").value("Carpenter"))
+                .andExpect(jsonPath("$.day_overview[0].current_site").isEmpty());
+    }
+
+    @Test
     void shouldReturnPlanningWithWorkdaysWhenValidFromAndUntilDatesAreProvided() throws Exception {
         // Given - create a site with execution date on Dec 2, 2026
         Customer customer = new Customer();

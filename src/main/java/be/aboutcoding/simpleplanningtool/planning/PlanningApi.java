@@ -4,8 +4,10 @@ import be.aboutcoding.simpleplanningtool.planning.dayplanning.DayPlanningFlowCon
 import be.aboutcoding.simpleplanningtool.planning.dto.DayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.IdleWorkersResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
+import be.aboutcoding.simpleplanningtool.planning.dto.WorkerDayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.model.DayOverview;
 import be.aboutcoding.simpleplanningtool.planning.model.Planning;
+import be.aboutcoding.simpleplanningtool.planning.workerday.GetDayOverviewWorkers;
 import be.aboutcoding.simpleplanningtool.site.Site;
 import be.aboutcoding.simpleplanningtool.site.SiteRepository;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -32,10 +34,12 @@ public class PlanningApi {
     private final PlanningResponseMapper planningResponseMapper;
     private final DayPlanningFlowController dayPlanningFlowController;
     private final GetIdleWorkers getIdleWorkers;
+    private final GetDayOverviewWorkers getDayOverviewWorkers;
 
     public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, UnlinkWorker unlinkWorker,
                        GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper,
-                       DayPlanningFlowController dayPlanningFlowController, GetIdleWorkers getIdleWorkers) {
+                       DayPlanningFlowController dayPlanningFlowController, GetIdleWorkers getIdleWorkers,
+                       GetDayOverviewWorkers getDayOverviewWorkers) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
         this.unlinkWorker = unlinkWorker;
@@ -43,6 +47,7 @@ public class PlanningApi {
         this.planningResponseMapper = planningResponseMapper;
         this.dayPlanningFlowController = dayPlanningFlowController;
         this.getIdleWorkers = getIdleWorkers;
+        this.getDayOverviewWorkers = getDayOverviewWorkers;
     }
 
     @PatchMapping("/sites/{siteId}")
@@ -123,6 +128,14 @@ public class PlanningApi {
 
         var idleWorkers = getIdleWorkers.execute(date);
         var response =  IdleWorkersResponse.from(date, idleWorkers);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/worker/day")
+    public ResponseEntity<WorkerDayOverviewResponse> getWorkerDayOverview(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        WorkerDayOverviewResponse response = getDayOverviewWorkers.execute(date);
         return ResponseEntity.ok(response);
     }
 }
