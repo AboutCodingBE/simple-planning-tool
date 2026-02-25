@@ -1,0 +1,11 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: simple-planning-tool
+  datasource:
+    url: jdbc:postgresql://localhost:5432/planning_tool
+    username: user
+    password: password
+
+
