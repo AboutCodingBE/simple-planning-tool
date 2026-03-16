@@ -25,9 +25,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.springframework.http.MediaType;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -45,6 +48,7 @@ class PlanningApiIntegrationTest {
 
     @AfterEach
     void cleanupDatabase() {
+        entityManager.createNativeQuery("DELETE FROM site_week_planning").executeUpdate();
         entityManager.createQuery("DELETE FROM Site").executeUpdate();
         entityManager.createQuery("DELETE FROM Customer").executeUpdate();
         entityManager.createQuery("DELETE FROM Worker").executeUpdate();
@@ -748,6 +752,113 @@ class PlanningApiIntegrationTest {
         mockMvc.perform(get("/planning/idle")
                         .queryParam("date", invalidDate))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldPersistSiteWeekPlanningWhenValidRequestIsProvided() throws Exception {
+        // Given - create a site in the database
+        Site site = createAndPersistSite(null);
+        Long siteId = site.getId();
+
+        String requestBody = """
+                {
+                  "week": 15,
+                  "year": 2026,
+                  "site_id": %d
+                }
+                """.formatted(siteId);
+
+        // When - send PUT request to plan the site in a week
+        mockMvc.perform(put("/planning/monthly")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated());
+
+        // Then - verify the record is persisted in the database
+        entityManager.flush();
+        entityManager.clear();
+
+        Long count = (Long) entityManager
+                .createNativeQuery(
+                        "SELECT COUNT(*) FROM site_week_planning WHERE site_id = :siteId AND week = 15 AND year = 2026",
+                        Long.class)
+                .setParameter("siteId", siteId)
+                .getSingleResult();
+
+        assertThat(count).isEqualTo(1L);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenSiteDoesNotExist() throws Exception {
+        // Given - a site id that does not exist
+        Long nonExistentSiteId = 99999L;
+
+        String requestBody = """
+                { "week": 15, "year": 2026, "site_id": %d }
+                """.formatted(nonExistentSiteId);
+
+        // When / Then
+        mockMvc.perform(put("/planning/monthly")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isNotFound());
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidPlanSiteForWeekRequests")
+    void shouldReturnBadRequestWhenPlanSiteForWeekRequestIsInvalid(String requestBody) throws Exception {
+        mockMvc.perform(put("/planning/monthly")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+    }
+
+    private static Stream<String> invalidPlanSiteForWeekRequests() {
+        return Stream.of(
+                // Missing week
+                """
+                { "year": 2026, "site_id": 1 }
+                """,
+                // Missing year
+                """
+                { "week": 15, "site_id": 1 }
+                """,
+                // Missing site_id
+                """
+                { "week": 15, "year": 2026 }
+                """,
+                // Empty body
+                """
+                {}
+                """
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("pastWeekAndYearCombinations")
+    void shouldReturnBadRequestWhenWeekAndYearCombinationIsInThePast(String requestBody) throws Exception {
+        // Given - create a site in the database
+        Site site = createAndPersistSite(null);
+        Long siteId = site.getId();
+
+        // When / Then - send PUT request with a past week/year combination
+        mockMvc.perform(put("/planning/monthly")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody.formatted(siteId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    private static Stream<String> pastWeekAndYearCombinations() {
+        return Stream.of(
+                // Past year
+                """
+                { "week": 52, "year": 2025, "site_id": %d }
+                """,
+                // Current year, past week (week 10 is before week 11 which is today's week)
+                """
+                { "week": 10, "year": 2026, "site_id": %d }
+                """
+        );
     }
 
     private Site createAndPersistSite(LocalDate executionDate) {

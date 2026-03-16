@@ -3,6 +3,7 @@ package be.aboutcoding.simpleplanningtool.planning;
 import be.aboutcoding.simpleplanningtool.planning.dayplanning.DayPlanningFlowController;
 import be.aboutcoding.simpleplanningtool.planning.dto.DayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.IdleWorkersResponse;
+import be.aboutcoding.simpleplanningtool.planning.dto.PlanSiteForWeekRequest;
 import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.WorkerDayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.model.DayOverview;
@@ -10,17 +11,21 @@ import be.aboutcoding.simpleplanningtool.planning.model.Planning;
 import be.aboutcoding.simpleplanningtool.planning.workerday.GetDayOverviewWorkers;
 import be.aboutcoding.simpleplanningtool.site.Site;
 import be.aboutcoding.simpleplanningtool.site.SiteRepository;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.temporal.IsoFields;
 
 @RestController
 @RequestMapping("/planning")
@@ -35,11 +40,12 @@ public class PlanningApi {
     private final DayPlanningFlowController dayPlanningFlowController;
     private final GetIdleWorkers getIdleWorkers;
     private final GetDayOverviewWorkers getDayOverviewWorkers;
+    private final PlanSiteForWeek planSiteForWeek;
 
     public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, UnlinkWorker unlinkWorker,
                        GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper,
                        DayPlanningFlowController dayPlanningFlowController, GetIdleWorkers getIdleWorkers,
-                       GetDayOverviewWorkers getDayOverviewWorkers) {
+                       GetDayOverviewWorkers getDayOverviewWorkers, PlanSiteForWeek planSiteForWeek) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
         this.unlinkWorker = unlinkWorker;
@@ -48,6 +54,24 @@ public class PlanningApi {
         this.dayPlanningFlowController = dayPlanningFlowController;
         this.getIdleWorkers = getIdleWorkers;
         this.getDayOverviewWorkers = getDayOverviewWorkers;
+        this.planSiteForWeek = planSiteForWeek;
+    }
+
+    @PutMapping("/monthly")
+    public ResponseEntity<Void> planSiteForWeek(@Valid @RequestBody PlanSiteForWeekRequest request) {
+        validateWeekYearCombiation(request.week(), request.year());
+        planSiteForWeek.execute(request.week(), request.year(), request.siteId());
+        return ResponseEntity.status(201).build();
+    }
+
+    private void validateWeekYearCombiation(Integer week, Integer year) {
+        LocalDate today = LocalDate.now();
+        int currentWeek = today.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
+        int currentYear = today.get(IsoFields.WEEK_BASED_YEAR);
+
+        if (year < currentYear || (year == currentYear && week < currentWeek)) {
+            throw new WeekInThePastException(week, year);
+        }
     }
 
     @PatchMapping("/sites/{siteId}")

@@ -4,6 +4,7 @@ import be.aboutcoding.simpleplanningtool.planning.dayplanning.RawPlannedSiteProj
 import be.aboutcoding.simpleplanningtool.planning.workerday.WorkerDayDetailProjection;
 import be.aboutcoding.simpleplanningtool.site.Site;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,4 +20,8 @@ public interface PlanningRepository extends JpaRepository<Site, Long> {
 
     @Query(value = "SELECT * FROM get_worker_day_overview(:date)", nativeQuery = true)
     List<WorkerDayDetailProjection> findWorkerDayOverview(@Param("date") LocalDate date);
+
+    @Modifying
+    @Query(value = "INSERT INTO site_week_planning (week, year, site_id) VALUES (:week, :year, :siteId)", nativeQuery = true)
+    void planSiteForWeek(@Param("week") int week, @Param("year") int year, @Param("siteId") Long siteId);
 }

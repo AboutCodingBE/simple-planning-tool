@@ -1,5 +1,6 @@
 package be.aboutcoding.simpleplanningtool.exception;
 
+import be.aboutcoding.simpleplanningtool.planning.WeekInThePastException;
 import be.aboutcoding.simpleplanningtool.site.SiteHasNoExecutionDateException;
 import be.aboutcoding.simpleplanningtool.site.SiteNotFoundException;
 import be.aboutcoding.simpleplanningtool.worker.WorkerNotFoundException;
@@ -24,6 +25,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(SiteNotFoundException.class)
     public ResponseEntity<Void> handleSiteNotFoundException(SiteNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+    }
+
+    @ExceptionHandler(WeekInThePastException.class)
+    public ResponseEntity<Void> handleWeekInThePastException(WeekInThePastException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
     }
 
     @ExceptionHandler(SiteHasNoExecutionDateException.class)
