@@ -7,6 +7,7 @@ import be.aboutcoding.simpleplanningtool.planning.dto.PlanSiteForWeekRequest;
 import be.aboutcoding.simpleplanningtool.planning.dto.PlanningResponse;
 import be.aboutcoding.simpleplanningtool.planning.dto.WorkerDayOverviewResponse;
 import be.aboutcoding.simpleplanningtool.planning.model.DayOverview;
+import be.aboutcoding.simpleplanningtool.planning.model.MonthlyOverview;
 import be.aboutcoding.simpleplanningtool.planning.model.Planning;
 import be.aboutcoding.simpleplanningtool.planning.workerday.GetDayOverviewWorkers;
 import be.aboutcoding.simpleplanningtool.site.Site;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.time.temporal.IsoFields;
 
 @RestController
@@ -41,11 +43,13 @@ public class PlanningApi {
     private final GetIdleWorkers getIdleWorkers;
     private final GetDayOverviewWorkers getDayOverviewWorkers;
     private final PlanSiteForWeek planSiteForWeek;
+    private final GetMonthlyOverview getMonthlyOverview;
 
     public PlanningApi(SiteRepository siteRepository, LinkWorkerToSite linkWorkerToSite, UnlinkWorker unlinkWorker,
                        GetPlanning getPlanning, PlanningResponseMapper planningResponseMapper,
                        DayPlanningFlowController dayPlanningFlowController, GetIdleWorkers getIdleWorkers,
-                       GetDayOverviewWorkers getDayOverviewWorkers, PlanSiteForWeek planSiteForWeek) {
+                       GetDayOverviewWorkers getDayOverviewWorkers, PlanSiteForWeek planSiteForWeek,
+                       GetMonthlyOverview getMonthlyOverview) {
         this.siteRepository = siteRepository;
         this.linkWorkerToSite = linkWorkerToSite;
         this.unlinkWorker = unlinkWorker;
@@ -55,6 +59,12 @@ public class PlanningApi {
         this.getIdleWorkers = getIdleWorkers;
         this.getDayOverviewWorkers = getDayOverviewWorkers;
         this.planSiteForWeek = planSiteForWeek;
+        this.getMonthlyOverview = getMonthlyOverview;
+    }
+
+    @GetMapping("/monthly")
+    public ResponseEntity<List<MonthlyOverview>> getMonthlyOverview() {
+        return ResponseEntity.ok(getMonthlyOverview.execute());
     }
 
     @PutMapping("/monthly")

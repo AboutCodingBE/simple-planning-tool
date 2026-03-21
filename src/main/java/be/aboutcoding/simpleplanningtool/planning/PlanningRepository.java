@@ -24,4 +24,7 @@ public interface PlanningRepository extends JpaRepository<Site, Long> {
     @Modifying
     @Query(value = "INSERT INTO site_week_planning (week, year, site_id) VALUES (:week, :year, :siteId)", nativeQuery = true)
     void planSiteForWeek(@Param("week") int week, @Param("year") int year, @Param("siteId") Long siteId);
+
+    @Query(value = "SELECT * FROM get_week_planning_overview()", nativeQuery = true)
+    List<WeekPlanningOverviewProjection> getWeekPlanningOverview();
 }

@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -752,6 +753,44 @@ class PlanningApiIntegrationTest {
         mockMvc.perform(get("/planning/idle")
                         .queryParam("date", invalidDate))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnMonthlyOverviewWithPlannedSitesGroupedByWeekForCurrentAndNext2Months() throws Exception {
+        // Given - create sites and plan them in a week clearly within each month
+        // Week 12: March 16-22, Week 16: April 13-19, Week 20: May 11-17
+        Site marchSite = createAndPersistSite(null);
+        marchSite.setName("March Site");
+        entityManager.merge(marchSite);
+
+        Site aprilSite = createAndPersistSite(null);
+        aprilSite.setName("April Site");
+        entityManager.merge(aprilSite);
+
+        Site maySite = createAndPersistSite(null);
+        maySite.setName("May Site");
+        entityManager.merge(maySite);
+
+        entityManager.flush();
+
+        entityManager.createNativeQuery("INSERT INTO site_week_planning (week, year, site_id) VALUES (12, 2026, :siteId)")
+                .setParameter("siteId", marchSite.getId()).executeUpdate();
+        entityManager.createNativeQuery("INSERT INTO site_week_planning (week, year, site_id) VALUES (16, 2026, :siteId)")
+                .setParameter("siteId", aprilSite.getId()).executeUpdate();
+        entityManager.createNativeQuery("INSERT INTO site_week_planning (week, year, site_id) VALUES (20, 2026, :siteId)")
+                .setParameter("siteId", maySite.getId()).executeUpdate();
+
+        // When / Then
+        mockMvc.perform(get("/planning/monthly"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].month").value("March"))
+                .andExpect(jsonPath("$[1].month").value("April"))
+                .andExpect(jsonPath("$[2].month").value("May"))
+                .andExpect(jsonPath("$[0].weeks[*].sites[*].name", hasItem("March Site")))
+                .andExpect(jsonPath("$[1].weeks[*].sites[*].name", hasItem("April Site")))
+                .andExpect(jsonPath("$[2].weeks[*].sites[*].name", hasItem("May Site")));
     }
 
     @Test
